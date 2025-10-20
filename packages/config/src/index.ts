@@ -1,3 +1,25 @@
+/**
+ * Configuration Loader
+ * 
+ * Loads and validates Fresh Sniper configuration from TOML files
+ * with environment variable interpolation.
+ * 
+ * Features:
+ * - Loads base config from config/default.toml
+ * - Merges environment-specific overrides from config/{env}.toml
+ * - Substitutes ${VAR_NAME} placeholders with environment variables
+ * - Validates entire config structure with Zod schema
+ * 
+ * Usage:
+ *   const config = loadConfig();
+ *   console.log(config.rpc.primary_url);
+ * 
+ * Environment can be set via:
+ * - options.environmentName parameter
+ * - FRESH_SNIPER_ENV environment variable
+ * - environment.name in default.toml (fallback)
+ */
+
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { type FreshSniperConfig, validateConfigWithZod } from "./schema";

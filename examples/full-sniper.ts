@@ -1,7 +1,28 @@
 #!/usr/bin/env node
 /**
- * FULL SNIPER - Stream → Build → Simulate → Send via Jito
- * REAL TRANSACTIONS WITH REAL JITO SENDING
+ * FULL SNIPER - Complete Pipeline with Jito Sending
+ * 
+ * ⚠️ WARNING: This script sends REAL transactions and SPENDS SOL!
+ * 
+ * Pipeline:
+ * 1. Geyser Stream: Detects new Pump.fun tokens via Yellowstone gRPC
+ * 2. Build: Constructs buy transaction with priority fees
+ * 3. Simulate: Runs preflight check via RPC
+ * 4. Send: Submits to Jito Block Engine with tip
+ * 5. Confirm: Tracks transaction confirmation
+ * 
+ * Configuration:
+ * - All settings from config/default.toml + .env
+ * - Buy amount: config.strategy.buy_amount_sol
+ * - Slippage: config.strategy.max_slippage_bps
+ * - Priority fee: config.jito.priority_fee_lamports
+ * 
+ * Usage: pnpm dev:full
+ * 
+ * Safety:
+ * - Start with small amounts (0.001 SOL)
+ * - Test with dedicated wallet
+ * - Monitor success rates
  */
 
 import "dotenv/config";

@@ -1,3 +1,18 @@
+/**
+ * Pump.fun Transaction Builders
+ * 
+ * Constructs buy and sell transactions for the Pump.fun bonding curve program.
+ * 
+ * Program: 6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P
+ * 
+ * Transaction structure:
+ * 1. Compute budget instructions (units + priority fee)
+ * 2. Create associated token account (idempotent)
+ * 3. Buy/Sell instruction with amount and slippage protection
+ * 
+ * All PDAs are derived deterministically using program seeds.
+ */
+
 import {
   ComputeBudgetProgram,
   Connection,
