@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "outDir": "dist",
+    "resolveJsonModule": true,
+    "declaration": true,
+    "composite": true,
+    "baseUrl": ".",
+    "typeRoots": ["./types", "./node_modules/@types"],
+    "paths": {
+      "@fresh-sniper/config": ["packages/config/src"],
+      "@fresh-sniper/logging": ["packages/logging/src"],
+      "@fresh-sniper/metrics": ["packages/metrics/src"],
+      "@fresh-sniper/events": ["packages/events/src"],
+      "@fresh-sniper/store": ["packages/store/src"],
+      "@fresh-sniper/solana-client": ["packages/solana-client/src"],
+      "@fresh-sniper/transactions": ["packages/transactions/src"],
+      "@fresh-sniper/strategies/pumpfun": ["packages/strategies/pumpfun/src"]
+    }
+  }
+}

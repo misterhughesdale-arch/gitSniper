@@ -1,0 +1,15 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/config" },
+    { "path": "packages/logging" },
+    { "path": "packages/metrics" },
+    { "path": "packages/events" },
+    { "path": "packages/store" },
+    { "path": "packages/solana-client" },
+    { "path": "packages/transactions" },
+    { "path": "packages/strategies/pumpfun" },
+    { "path": "apps/hot-route" },
+    { "path": "services/geyser-stream" }
+  ]
+}

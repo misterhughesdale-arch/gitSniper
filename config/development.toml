@@ -1,0 +1,18 @@
+[environment]
+name = "development"
+
+[rpc]
+commitment = "confirmed"
+
+[jito]
+priority_fee_lamports = 5000
+bundle_enabled = false
+
+[express]
+port = 8081
+
+[simulation]
+skip_preflight = true
+
+[metrics]
+report_file = "logs/metrics-dev.log"

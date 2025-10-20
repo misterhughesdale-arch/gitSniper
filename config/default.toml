@@ -1,0 +1,57 @@
+[environment]
+name = "production"
+
+[rpc]
+primary_url = "${SOLANA_RPC_PRIMARY}"
+fallback_urls = []
+commitment = "processed"
+
+[jito]
+block_engine_url = "https://ny.mainnet.block-engine.jito.wtf/api/v1/transactions"
+tip_account_pubkey = "96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5"
+priority_fee_lamports = 100000
+bundle_enabled = true
+
+[geyser]
+endpoint = "${GEYSER_ENDPOINT}"
+auth_token = "${GEYSER_AUTH_TOKEN}"
+
+[geyser.reconnect]
+initial_backoff_ms = 500
+max_backoff_ms = 5000
+
+[geyser.subscriptions]
+pumpfun_program_ids = ["6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"]
+wallet_addresses = []
+
+[express]
+host = "0.0.0.0"
+port = 8080
+request_timeout_ms = 2000
+
+[strategy]
+buy_amount_sol = 0.1
+max_slippage_bps = 300
+sell_wait_seconds = 120
+max_open_positions = 3
+
+[simulation]
+enabled = true
+skip_preflight = false
+
+[metrics]
+enabled = true
+sampling_ratio = 1.0
+report_file = "logs/metrics.log"
+
+[logging]
+level = "info"
+file = "logs/app.log"
+
+[wallets]
+trader_keypair_path = "${TRADER_KEYPAIR_PATH}"
+
+[pumpfun_filters]
+min_liquidity_sol = 1.0
+whitelist_creator_addresses = []
+blacklist_creator_addresses = []

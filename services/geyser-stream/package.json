@@ -1,0 +1,21 @@
+{
+  "name": "geyser-stream-service",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p .",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js"
+  },
+  "dependencies": {
+    "@fresh-sniper/config": "workspace:*",
+    "@fresh-sniper/logging": "workspace:*",
+    "@fresh-sniper/metrics": "workspace:*",
+    "@triton-one/yellowstone-grpc": "^0.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0"
+  }
+}

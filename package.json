@@ -1,0 +1,33 @@
+{
+  "name": "fresh-sniper",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist packages/*/dist apps/*/dist services/*/dist",
+    "lint": "eslint --ext .ts,.tsx .",
+    "sanity-check": "tsx scripts/sanity-check.ts",
+    "dev:mvp": "tsx examples/mvp-sniper.ts",
+    "dev:simple": "tsx examples/simple-mvp.ts",
+    "dev:working": "tsx examples/working-mvp.ts",
+    "dev:full": "tsx examples/full-sniper.ts",
+    "start:hot-route": "pnpm --filter hot-route-app dev",
+    "dev:geyser": "pnpm --filter geyser-stream-service dev"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "devDependencies": {
+    "@solana/web3.js": "^1.98.4",
+    "@triton-one/yellowstone-grpc": "^0.4.0",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "express": "^4.21.2",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "zod": "^3.25.76"
+  }
+}
