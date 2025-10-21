@@ -29,6 +29,7 @@ import {
   LAMPORTS_PER_SOL,
   PUMP_EVENT_AUTHORITY,
   PUMP_FEE_RECIPIENT,
+  PUMP_FEE_PROGRAM,
   PUMP_GLOBAL,
   PUMP_PROGRAM_ID,
   SELL_DISCRIMINATOR,
@@ -36,7 +37,16 @@ import {
   TOKEN_DECIMALS,
   TOKEN_PROGRAM_ID,
 } from "./constants";
-import { deriveAssociatedBondingCurvePDA, deriveAssociatedTokenAddress, deriveBondingCurvePDA } from "./pdas";
+import { 
+  deriveAssociatedBondingCurvePDA, 
+  deriveAssociatedTokenAddress, 
+  deriveBondingCurvePDA,
+  deriveCreatorVaultPDA,
+  deriveFeeConfigPDA,
+  deriveGlobalVolumeAccumulatorPDA,
+  deriveUserVolumeAccumulatorPDA,
+} from "./pdas";
+import { fetchBondingCurveState } from "./curve-parser";
 
 export interface BuyTransactionParams {
   connection: Connection;
@@ -92,10 +102,19 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
     );
   }
 
-  // Derive PDAs
+  // Derive all required PDAs
   const [bondingCurve] = deriveBondingCurvePDA(mint);
   const [associatedBondingCurve] = deriveAssociatedBondingCurvePDA(mint);
   const buyerTokenAccount = deriveAssociatedTokenAddress(buyer, mint, TOKEN_PROGRAM_ID);
+  
+  // Fetch bonding curve state to get REAL creator
+  const curveState = await fetchBondingCurveState(connection, bondingCurve);
+  const [creatorVault] = deriveCreatorVaultPDA(curveState.creator);
+  
+  // Derive volume and fee PDAs
+  const [globalVolumeAccumulator] = deriveGlobalVolumeAccumulatorPDA();
+  const [userVolumeAccumulator] = deriveUserVolumeAccumulatorPDA(buyer);
+  const [feeConfig] = deriveFeeConfigPDA();
 
   // Create associated token account instruction (idempotent)
   const createAtaInstruction = createAssociatedTokenAccountIdempotentInstruction(
@@ -116,6 +135,10 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
     bondingCurve,
     associatedBondingCurve,
     buyerTokenAccount,
+    creatorVault,
+    globalVolumeAccumulator,
+    userVolumeAccumulator,
+    feeConfig,
     amountLamports,
     maxSolCost,
   });
@@ -202,6 +225,12 @@ export async function buildSellTransaction(params: SellTransactionParams): Promi
 
 /**
  * Creates a buy instruction for Pump.fun
+ * 
+ * Account order matches Pump.fun program requirements (16 accounts total):
+ * 0. global, 1. fee_recipient, 2. mint, 3. bonding_curve, 4. associated_bonding_curve,
+ * 5. buyer_token_account, 6. buyer (signer), 7. system_program, 8. token_program,
+ * 9. creator_vault, 10. event_authority, 11. program, 12. global_volume_accumulator,
+ * 13. user_volume_accumulator, 14. fee_config, 15. fee_program
  */
 function createBuyInstruction(params: {
   buyer: PublicKey;
@@ -209,10 +238,18 @@ function createBuyInstruction(params: {
   bondingCurve: PublicKey;
   associatedBondingCurve: PublicKey;
   buyerTokenAccount: PublicKey;
+  creatorVault: PublicKey;
+  globalVolumeAccumulator: PublicKey;
+  userVolumeAccumulator: PublicKey;
+  feeConfig: PublicKey;
   amountLamports: bigint;
   maxSolCost: bigint;
 }): TransactionInstruction {
-  const { buyer, mint, bondingCurve, associatedBondingCurve, buyerTokenAccount, amountLamports, maxSolCost } = params;
+  const { 
+    buyer, mint, bondingCurve, associatedBondingCurve, buyerTokenAccount,
+    creatorVault, globalVolumeAccumulator, userVolumeAccumulator, feeConfig,
+    amountLamports, maxSolCost 
+  } = params;
 
   // Instruction data: discriminator + amount + max_sol_cost
   const data = Buffer.alloc(24);
@@ -231,8 +268,13 @@ function createBuyInstruction(params: {
       { pubkey: buyer, isSigner: true, isWritable: true },
       { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: creatorVault, isSigner: false, isWritable: true },
       { pubkey: PUMP_EVENT_AUTHORITY, isSigner: false, isWritable: false },
       { pubkey: PUMP_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: globalVolumeAccumulator, isSigner: false, isWritable: true },
+      { pubkey: userVolumeAccumulator, isSigner: false, isWritable: true },
+      { pubkey: feeConfig, isSigner: false, isWritable: false },
+      { pubkey: PUMP_FEE_PROGRAM, isSigner: false, isWritable: false },
     ],
     programId: PUMP_PROGRAM_ID,
     data,

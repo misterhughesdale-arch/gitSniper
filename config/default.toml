@@ -13,8 +13,8 @@ priority_fee_lamports = 100000
 bundle_enabled = true
 
 [geyser]
-endpoint = "${GEYSER_ENDPOINT}"
-auth_token = "${GEYSER_AUTH_TOKEN}"
+endpoint = "${GRPC_URL}"
+auth_token = "${X_TOKEN}"
 
 [geyser.reconnect]
 initial_backoff_ms = 500
