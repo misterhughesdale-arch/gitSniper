@@ -159,7 +159,6 @@ async function buyToken(mintStr: string, receivedAt: number) {
       amountSol: BUY_AMOUNT,
       slippageBps: 500,
       priorityFeeLamports: BUY_PRIORITY_FEE,
-      blockhash: cachedBlockhash,
     });
     
     transaction.sign(trader);
@@ -306,12 +305,20 @@ async function handleStream(client: Client) {
 
     try {
       // Update blockhash from stream
-      if (data?.blockMeta?.blockhash) {
-        const hashBytes = data.blockMeta.blockhash;
-        cachedBlockhash = typeof hashBytes === 'string' ? hashBytes : bs58.encode(Buffer.from(hashBytes));
+      // Update cachedBlockhash from data.blockMeta.blockhash if present and valid
+      if (data && data.blockMeta && data.blockMeta.blockhash) {
+        const hashField = data.blockMeta.blockhash;
+        if (typeof hashField === "string") {
+          cachedBlockhash = hashField;
+        } else if (Array.isArray(hashField) || Buffer.isBuffer(hashField)) {
+          // Handle possible Uint8Array/Buffer formats
+          cachedBlockhash = bs58.encode(Buffer.from(hashField));
+        } else {
+          // Unknown format - skip updating
+        }
       }
 
-      if (!data?.transaction) return;
+      if (!data || !data.transaction) return;
 
       const txInfo = data.transaction.transaction ?? data.transaction;
       const meta = txInfo.meta ?? data.transaction.meta;
