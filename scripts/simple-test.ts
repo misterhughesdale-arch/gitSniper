@@ -297,6 +297,12 @@ async function handleStream(client: Client) {
     if (receivedAt > startTime + TEST_DURATION_MS) return; // Stop after 15 min
 
     try {
+      // Update blockhash from stream
+      if (data?.blockMeta?.blockhash) {
+        const hashBytes = data.blockMeta.blockhash;
+        cachedBlockhash = typeof hashBytes === 'string' ? hashBytes : bs58.encode(Buffer.from(hashBytes));
+      }
+
       if (!data?.transaction) return;
 
       const txInfo = data.transaction.transaction ?? data.transaction;
