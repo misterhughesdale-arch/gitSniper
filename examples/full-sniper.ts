@@ -38,8 +38,7 @@ import { readFileSync } from "fs";
 import { loadConfig } from "../packages/config/src/index";
 import { buildBuyTransaction } from "../packages/transactions/src/pumpfun/builders";
 
-// Pump.fun Token Program - ONLY emits creation events
-const PUMPFUN_TOKEN_PROGRAM = "TSLvdd1pWpHVjahSpsvCXUbgwsL3JAcvokwaKt1eokM";
+const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
 
 // Load config from TOML files with env var interpolation
 const config = loadConfig();
@@ -243,9 +242,15 @@ async function handleStream(client: Client, args: any) {
       const preBalances = meta.preTokenBalances || [];
       const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
       
-      // Token program only emits creations, so ALL tokens are new pump.fun tokens
       const newTokens = postBalances
-        .filter((b: any) => b.mint && !preMints.has(b.mint))
+        .filter((b: any) => {
+          if (!b.mint || preMints.has(b.mint)) return false;
+          // Filter out native SOL
+          if (b.mint === "So11111111111111111111111111111111111111112") return false;
+          // Only pump.fun tokens
+          if (!b.mint.endsWith("pump")) return false;
+          return true;
+        })
         .map((b: any) => ({
           mint: b.mint,
           owner: b.owner || "unknown",
@@ -298,7 +303,7 @@ async function main() {
   console.log(`🔗 Jito: ${config.jito.block_engine_url}`);
   console.log(`🔗 RPC: ${config.rpc.primary_url}`);
   console.log(`📡 Geyser: ${config.geyser.endpoint}`);
-  console.log(`📡 Watching: ${PUMPFUN_TOKEN_PROGRAM} (Token Program - Creations Only)\n`);
+  console.log(`📡 Watching: ${PUMPFUN_PROGRAM}\n`);
   
   const client = new Client(config.geyser.endpoint, config.geyser.auth_token, undefined);
   
@@ -306,11 +311,11 @@ async function main() {
     accounts: {},
     slots: {},
     transactions: {
-      pumpfun_creations: {
+      pumpfun: {
         vote: false,
         failed: false,
         signature: undefined,
-        accountInclude: [PUMPFUN_TOKEN_PROGRAM], // Token program = creations only
+        accountInclude: [PUMPFUN_PROGRAM],
         accountExclude: [],
         accountRequired: [],
       },
