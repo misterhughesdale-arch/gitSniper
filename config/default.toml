@@ -35,6 +35,16 @@ max_slippage_bps = 300
 sell_wait_seconds = 120
 max_open_positions = 3
 
+# Auto-sell configuration
+[strategy.auto_sell]
+enabled = true
+strategy = "time_based"  # Options: "time_based", "tp_sl", "manual"
+hold_time_seconds = 60   # For time_based: hold for 60 seconds then sell
+take_profit_percent = 50 # For tp_sl: sell at 50% profit
+stop_loss_percent = 20   # For tp_sl: sell at 20% loss
+sell_priority_fee = 5000000  # 0.005 SOL priority for sells
+sell_slippage_bps = 1000     # 10% slippage for sells
+
 [simulation]
 enabled = true
 skip_preflight = false
