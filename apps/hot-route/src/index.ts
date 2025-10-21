@@ -5,7 +5,7 @@ import { createRootLogger } from "@fresh-sniper/logging";
 import { createMetrics } from "@fresh-sniper/metrics";
 import { createSolanaClients } from "@fresh-sniper/solana-client";
 
-export async function startServer() {
+export async function startServer(): Promise<{ app: any; server: any; solanaClients: any }> {
   // Load configuration
   const config = loadConfig();
   const logger = createRootLogger({ level: config.logging.level, destination: config.logging.file });
@@ -47,7 +47,8 @@ export async function startServer() {
   return { app, server, solanaClients };
 }
 
-if (require.main === module) {
+// @ts-ignore
+if (typeof require !== 'undefined' && require.main && require.main === module) {
   startServer().catch((error) => {
     // Defensive log to ensure boot errors bubble up with context
     console.error("Failed to start hot-route server", error);

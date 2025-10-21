@@ -173,12 +173,12 @@ export async function simulateTransaction(
   commitment?: Commitment,
 ): Promise<SimulatedTransactionResponse> {
   if (transaction instanceof Transaction) {
-    const simulation = await connection.simulateTransaction(transaction, undefined, commitment);
+    const simulation = await connection.simulateTransaction(transaction);
     return simulation.value;
   }
 
-  // For versioned transactions
-  const simulation = await connection.simulateTransaction(transaction, { commitment });
+  // For versioned transactions  
+  const simulation = await connection.simulateTransaction(transaction);
   return simulation.value;
 }
 
@@ -305,6 +305,8 @@ export class ConnectionPool {
     throw new Error(`All RPC endpoints failed: ${lastError?.message ?? "unknown error"}`);
   }
 }
+
+export type { Commitment };
 
 /**
  * Creates a connection pool with primary and fallback RPCs from config.

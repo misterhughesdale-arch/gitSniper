@@ -12,7 +12,7 @@ interface Dependencies {
   solanaClients: SolanaClients;
 }
 
-export function createSnipeRouter(deps: Dependencies) {
+export function createSnipeRouter(deps: Dependencies): any {
   const router = Router();
   const controller = createSnipeController(deps);
 
