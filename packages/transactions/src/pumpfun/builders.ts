@@ -83,7 +83,7 @@ export interface BuildTransactionResult {
  * Creates associated token account if needed, then executes buy instruction.
  */
 export async function buildBuyTransaction(params: BuyTransactionParams): Promise<BuildTransactionResult> {
-  const { connection, buyer, mint, amountSol, slippageBps, priorityFeeLamports = 10000, computeUnits = DEFAULT_COMPUTE_UNITS } = params;
+  const { connection, buyer, mint, amountSol, slippageBps, priorityFeeLamports = 33333, computeUnits = DEFAULT_COMPUTE_UNITS } = params; // ~10k lamports total (33k microlamports per unit * 300k units)
 
   const transaction = new Transaction();
 
@@ -126,7 +126,12 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
   transaction.add(createAtaInstruction);
 
   // Build buy instruction
-  const amountLamports = BigInt(Math.floor(amountSol * LAMPORTS_PER_SOL));
+  // NOTE: Pump.fun buy instruction takes:
+  // 1. TOKEN AMOUNT to receive (in raw token units, 6 decimals)
+  // 2. MAX SOL to spend (in lamports, with slippage)
+  
+  // Request reasonable token amount, limited by max SOL
+  const tokenAmount = BigInt(100_000_000_000); // Request 100k tokens (will be limited by SOL)
   const maxSolCost = BigInt(Math.floor((amountSol * (1 + slippageBps / 10000)) * LAMPORTS_PER_SOL));
 
   const buyInstruction = createBuyInstruction({
@@ -139,8 +144,8 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
     globalVolumeAccumulator,
     userVolumeAccumulator,
     feeConfig,
-    amountLamports,
-    maxSolCost,
+    tokenAmount,  // Token amount to receive
+    maxSolCost,   // Max SOL to spend
   });
 
   transaction.add(buyInstruction);
@@ -249,20 +254,20 @@ function createBuyInstruction(params: {
   globalVolumeAccumulator: PublicKey;
   userVolumeAccumulator: PublicKey;
   feeConfig: PublicKey;
-  amountLamports: bigint;
+  tokenAmount: bigint;
   maxSolCost: bigint;
 }): TransactionInstruction {
   const { 
     buyer, mint, bondingCurve, associatedBondingCurve, buyerTokenAccount,
     creatorVault, globalVolumeAccumulator, userVolumeAccumulator, feeConfig,
-    amountLamports, maxSolCost 
+    tokenAmount, maxSolCost 
   } = params;
 
-  // Instruction data: discriminator + amount + max_sol_cost + track_volume (Option<bool>)
+  // Instruction data: discriminator + token_amount + max_sol_cost + track_volume (Option<bool>)
   const data = Buffer.alloc(25);
   BUY_DISCRIMINATOR.copy(data, 0);
-  data.writeBigUInt64LE(amountLamports, 8);
-  data.writeBigUInt64LE(maxSolCost, 16);
+  data.writeBigUInt64LE(tokenAmount, 8);  // TOKEN amount to receive (6 decimals)
+  data.writeBigUInt64LE(maxSolCost, 16);  // MAX SOL to spend (lamports)
   data.writeUInt8(0, 24); // track_volume = None (0 = Option::None)
 
   return new TransactionInstruction({
@@ -294,8 +299,10 @@ function createBuyInstruction(params: {
  * 
  * SELL has 14 accounts (not 16 like buy - no volume tracking):
  * 0. global, 1. fee_recipient, 2. mint, 3. bonding_curve, 4. associated_bonding_curve,
- * 5. seller_token_account, 6. seller (signer), 7. system_program, 8. token_program,
- * 9. creator_vault, 10. event_authority, 11. program, 12. fee_config, 13. fee_program
+ * 5. seller_token_account, 6. seller (signer), 7. system_program, 8. creator_vault,
+ * 9. token_program, 10. event_authority, 11. program, 12. fee_config, 13. fee_program
+ * 
+ * NOTE: creator_vault MUST come before token_program (verified from Python bot)
  */
 function createSellInstruction(params: {
   seller: PublicKey;
@@ -330,8 +337,8 @@ function createSellInstruction(params: {
       { pubkey: sellerTokenAccount, isSigner: false, isWritable: true },
       { pubkey: seller, isSigner: true, isWritable: true },
       { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: creatorVault, isSigner: false, isWritable: true },
+      { pubkey: creatorVault, isSigner: false, isWritable: true }, // creator_vault BEFORE token_program!
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false }, // token_program AFTER creator_vault!
       { pubkey: PUMP_EVENT_AUTHORITY, isSigner: false, isWritable: false },
       { pubkey: PUMP_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: feeConfig, isSigner: false, isWritable: false },

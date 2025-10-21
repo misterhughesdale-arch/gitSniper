@@ -89,7 +89,7 @@ async function testSell(mintAddress: string) {
     mint,
     tokenAmount: balance, // Sell ALL tokens
     slippageBps: 500, // 5% slippage
-    priorityFeeLamports: 5000000, // 5M microlamports = 0.005 SOL
+    priorityFeeLamports: 10000, // 10k microlamports = 0.00001 SOL
     computeUnits: 250000,
   });
   

@@ -1,49 +1,46 @@
 #!/usr/bin/env node
 /**
- * EMERGENCY SELL ALL
+ * SELL VIA REGULAR RPC (NOT JITO)
  * 
- * Sells ALL tokens from all ATAs in the wallet
- * Use when you need to exit positions quickly
+ * Sells all tokens using standard Helius/Shyft RPC
+ * No Jito needed for sells - only buys need Jito
  */
 
 import "dotenv/config";
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { getAccount, TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { Connection, Keypair, PublicKey, sendAndConfirmTransaction } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { buildSellTransaction } from "../packages/transactions/src/pumpfun/builders";
 import { readFileSync } from "fs";
 
 const HELIUS_RPC = process.env.SOLANA_RPC_PRIMARY!;
-const JITO_URL = "https://mainnet.block-engine.jito.wtf/api/v1/transactions";
 const TRADER_KEYPAIR_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
 
 const keypairData = JSON.parse(readFileSync(TRADER_KEYPAIR_PATH, "utf-8"));
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
 
-console.log("🚨 EMERGENCY SELL ALL");
-console.log("====================\n");
-console.log(`Wallet: ${trader.publicKey.toBase58()}\n`);
-
-async function sendViaJito(signedTx: Buffer): Promise<string> {
-  const payload = {
-    jsonrpc: "2.0",
-    id: 1,
-    method: "sendTransaction",
-    params: [signedTx.toString("base64"), { encoding: "base64" }],
-  };
-
-  const response = await fetch(JITO_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.result;
-}
+console.log("💰 SELL VIA REGULAR RPC");
+console.log("======================\n");
+console.log(`Wallet: ${trader.publicKey.toBase58()}`);
+console.log(`RPC: ${HELIUS_RPC}\n`);
 
 async function main() {
   const connection = new Connection(HELIUS_RPC, "confirmed");
+
+  // Check SOL balance first
+  const balance = await connection.getBalance(trader.publicKey);
+  const balanceSol = balance / 1e9;
+  console.log(`SOL Balance: ${balanceSol.toFixed(6)} SOL`);
+  
+  const MIN_SOL = 0.0001; // Only need ~0.0001 SOL per tx
+  if (balanceSol < MIN_SOL) {
+    console.log(`\n❌ Insufficient SOL for gas fees! Need at least ${MIN_SOL} SOL`);
+    console.log(`   Please deposit SOL to: ${trader.publicKey.toBase58()}`);
+    process.exit(1);
+  }
+  
+  // Calculate how many sells we can afford
+  const maxSells = Math.floor(balanceSol / 0.0001);
+  console.log(`Can afford ~${maxSells} sell transactions\n`);
 
   // Get all token accounts
   const tokenAccounts = await connection.getParsedTokenAccountsByOwner(trader.publicKey, {
@@ -61,37 +58,38 @@ async function main() {
     })
     .filter(p => p.balance > 0);
 
-  console.log(`Found ${positions.length} tokens with balance to sell`);
-  console.log(`⏱️  Rate limited: 1 tx/second = ${positions.length} seconds total\n`);
+  console.log(`Found ${positions.length} tokens with balance to sell\n`);
 
   let sold = 0;
   let failed = 0;
 
-  // Sell ONE AT A TIME with 1 second delay
   for (let i = 0; i < positions.length; i++) {
     const { mint, mintStr, balance } = positions[i];
     
     console.log(`${i + 1}/${positions.length}. ${mintStr.slice(0, 8)}... - ${balance.toLocaleString()} tokens`);
 
     try {
-      // Build sell
+      // Build sell transaction  
       const { transaction } = await buildSellTransaction({
         connection,
         seller: trader.publicKey,
         mint,
         tokenAmount: balance,
-        slippageBps: 3000, // 30% slippage for emergency
-        priorityFeeLamports: 1, // MINIMAL priority fee (basically free)
+        slippageBps: 5000, // 50% slippage (emergency mode - just get out)
+        priorityFeeLamports: 1, // Absolute minimum priority fee
       });
 
-      // Sign and send via REGULAR RPC (not Jito)
+      // Sign transaction
       transaction.sign(trader);
+
+      // Send via REGULAR RPC (not Jito)
       const signature = await connection.sendRawTransaction(transaction.serialize(), {
         skipPreflight: false,
+        preflightCommitment: "confirmed",
       });
 
       console.log(`   📤 Sent: ${signature}`);
-      
+
       // Wait for confirmation
       const confirmation = await connection.confirmTransaction(signature, "confirmed");
       
@@ -107,9 +105,9 @@ async function main() {
       failed++;
     }
 
-    // Wait 1 second before next sell (Jito rate limit)
+    // Small delay to avoid rate limits
     if (i < positions.length - 1) {
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, 500));
     }
   }
 

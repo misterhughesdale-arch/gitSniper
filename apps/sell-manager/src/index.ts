@@ -110,7 +110,7 @@ async function executeSell(mintStr: string, reason: string) {
       mint: position.mint,
       tokenAmount: balance,
       slippageBps: autoSellCfg.sell_slippage_bps || 1000,
-      priorityFeeLamports: autoSellCfg.sell_priority_fee || 5000000,
+      priorityFeeLamports: autoSellCfg.sell_priority_fee || 10000, // Default 0.00001 SOL
     });
 
     transaction.sign(trader);

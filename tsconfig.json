@@ -7,6 +7,7 @@
     { "path": "packages/events" },
     { "path": "packages/store" },
     { "path": "packages/solana-client" },
+    { "path": "packages/auto-sell" },
     { "path": "packages/transactions" },
     { "path": "packages/strategies/pumpfun" },
     { "path": "apps/hot-route" },

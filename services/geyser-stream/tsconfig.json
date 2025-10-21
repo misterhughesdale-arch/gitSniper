@@ -1,9 +1,11 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "../../dist/services/geyser-stream"
+    "outDir": "../../dist/services/geyser-stream",
+    "rootDir": "src",
+    "tsBuildInfoFile": "../../dist/services/geyser-stream/tsconfig.tsbuildinfo"
   },
-  "include": ["src", "../../types/**/*.d.ts"],
+  "include": ["src/**/*"],
   "references": [
     { "path": "../../packages/config" },
     { "path": "../../packages/logging" },

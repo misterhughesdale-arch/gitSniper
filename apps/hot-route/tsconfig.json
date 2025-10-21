@@ -1,11 +1,16 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "../../dist/apps/hot-route"
+    "outDir": "../../dist/apps/hot-route",
+    "rootDir": "src",
+    "tsBuildInfoFile": "../../dist/apps/hot-route/tsconfig.tsbuildinfo"
   },
-  "include": ["src", "../../types/**/*.d.ts"],
+  "include": ["src/**/*"],
   "references": [
     { "path": "../../packages/config" },
+    { "path": "../../packages/logging" },
+    { "path": "../../packages/metrics" },
+    { "path": "../../packages/solana-client" },
     { "path": "../../packages/transactions" }
   ]
 }

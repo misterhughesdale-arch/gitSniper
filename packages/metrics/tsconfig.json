@@ -1,8 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "../../dist/packages/metrics"
+    "outDir": "dist",
+    "rootDir": "src"
   },
-  "include": ["src", "../../types/**/*.d.ts"],
+  "include": ["src/**/*"],
   "references": []
 }
