@@ -147,13 +147,20 @@ async function buyToken(mintStr: string, receivedAt: number) {
     buyAttempts++;
     lastBuyTime = now;
     
+    if (!cachedBlockhash) {
+      console.log(`   ❌ No blockhash available`);
+      return;
+    }
+    
     const { transaction } = await buildBuyTransaction({
       connection,
       buyer: trader.publicKey,
       mint,
+      creator: trader.publicKey, // Fallback - will be overridden by buildBuyTransaction
       amountSol: BUY_AMOUNT,
       slippageBps: 500,
       priorityFeeLamports: BUY_PRIORITY_FEE,
+      blockhash: cachedBlockhash,
     });
     
     transaction.sign(trader);
