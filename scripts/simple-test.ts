@@ -39,6 +39,7 @@ const MAX_TOKEN_AGE_MS = 500; // Only buy tokens younger than 500ms
 const startTime = Date.now();
 const pendingSells: Array<{ mint: PublicKey; buyTime: number; buyTx: string }> = [];
 const processedMints = new Set<string>(); // Track mints we've already processed
+let cachedBlockhash: string | null = null;
 let tokensDetected = 0;
 let buyAttempts = 0;
 let buySuccess = 0;
