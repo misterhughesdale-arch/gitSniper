@@ -13,6 +13,10 @@
     "dev:working": "tsx examples/working-mvp.ts",
     "dev:full": "tsx examples/full-sniper.ts",
     "dev:sdk": "tsx examples/sdk-sniper.ts",
+    "test:sell": "tsx examples/test-sell.ts",
+    "emergency:sell": "tsx scripts/emergency-sell-all.ts",
+    "recovery:reclaim": "tsx scripts/reclaim-ata-rent.ts",
+    "info:positions": "tsx scripts/list-positions.ts",
     "start:hot-route": "pnpm --filter hot-route-app dev",
     "dev:geyser": "pnpm --filter geyser-stream-service dev"
   },
