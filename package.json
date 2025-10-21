@@ -12,6 +12,7 @@
     "dev:simple": "tsx examples/simple-mvp.ts",
     "dev:working": "tsx examples/working-mvp.ts",
     "dev:full": "tsx examples/full-sniper.ts",
+    "dev:sdk": "tsx examples/sdk-sniper.ts",
     "start:hot-route": "pnpm --filter hot-route-app dev",
     "dev:geyser": "pnpm --filter geyser-stream-service dev"
   },
@@ -29,5 +30,9 @@
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "zod": "^3.25.76"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "pumpdotfun-sdk": "^1.4.2"
   }
 }
