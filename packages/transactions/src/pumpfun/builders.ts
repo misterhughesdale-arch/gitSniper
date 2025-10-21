@@ -104,7 +104,7 @@ export async function buildBuyTransaction(params: BuyTransactionParams): Promise
 
   // Derive all required PDAs
   const [bondingCurve] = deriveBondingCurvePDA(mint);
-  const [associatedBondingCurve] = deriveAssociatedBondingCurvePDA(mint);
+  const associatedBondingCurve = deriveAssociatedBondingCurvePDA(mint); // Now returns PublicKey directly
   const buyerTokenAccount = deriveAssociatedTokenAddress(buyer, mint, TOKEN_PROGRAM_ID);
   
   // Fetch bonding curve state to get REAL creator
@@ -187,8 +187,16 @@ export async function buildSellTransaction(params: SellTransactionParams): Promi
 
   // Derive PDAs
   const [bondingCurve] = deriveBondingCurvePDA(mint);
-  const [associatedBondingCurve] = deriveAssociatedBondingCurvePDA(mint);
+  const associatedBondingCurve = deriveAssociatedBondingCurvePDA(mint);
   const sellerTokenAccount = deriveAssociatedTokenAddress(seller, mint, TOKEN_PROGRAM_ID);
+
+  // Fetch bonding curve state to get REAL creator
+  const curveState = await fetchBondingCurveState(connection, bondingCurve);
+  const [creatorVault] = deriveCreatorVaultPDA(curveState.creator);
+
+  const [globalVolumeAccumulator] = deriveGlobalVolumeAccumulatorPDA();
+  const [userVolumeAccumulator] = deriveUserVolumeAccumulatorPDA(seller);
+  const [feeConfig] = deriveFeeConfigPDA();
 
   // Build sell instruction
   const tokenAmountRaw = BigInt(Math.floor(tokenAmount * 10 ** TOKEN_DECIMALS));
@@ -200,6 +208,10 @@ export async function buildSellTransaction(params: SellTransactionParams): Promi
     bondingCurve,
     associatedBondingCurve,
     sellerTokenAccount,
+    creatorVault,
+    globalVolumeAccumulator,
+    userVolumeAccumulator,
+    feeConfig,
     tokenAmountRaw,
     minSolOutput,
   });
@@ -251,11 +263,12 @@ function createBuyInstruction(params: {
     amountLamports, maxSolCost 
   } = params;
 
-  // Instruction data: discriminator + amount + max_sol_cost
-  const data = Buffer.alloc(24);
+  // Instruction data: discriminator + amount + max_sol_cost + track_volume (Option<bool>)
+  const data = Buffer.alloc(25);
   BUY_DISCRIMINATOR.copy(data, 0);
   data.writeBigUInt64LE(amountLamports, 8);
   data.writeBigUInt64LE(maxSolCost, 16);
+  data.writeUInt8(0, 24); // track_volume = None (0 = Option::None)
 
   return new TransactionInstruction({
     keys: [
@@ -284,22 +297,40 @@ function createBuyInstruction(params: {
 /**
  * Creates a sell instruction for Pump.fun
  */
+/**
+ * Creates a sell instruction for Pump.fun
+ * 
+ * Account order matches buy instruction (16 accounts total):
+ * 0. global, 1. fee_recipient, 2. mint, 3. bonding_curve, 4. associated_bonding_curve,
+ * 5. seller_token_account, 6. seller (signer), 7. system_program, 8. token_program,
+ * 9. creator_vault, 10. event_authority, 11. program, 12. global_volume_accumulator,
+ * 13. user_volume_accumulator, 14. fee_config, 15. fee_program
+ */
 function createSellInstruction(params: {
   seller: PublicKey;
   mint: PublicKey;
   bondingCurve: PublicKey;
   associatedBondingCurve: PublicKey;
   sellerTokenAccount: PublicKey;
+  creatorVault: PublicKey;
+  globalVolumeAccumulator: PublicKey;
+  userVolumeAccumulator: PublicKey;
+  feeConfig: PublicKey;
   tokenAmountRaw: bigint;
   minSolOutput: bigint;
 }): TransactionInstruction {
-  const { seller, mint, bondingCurve, associatedBondingCurve, sellerTokenAccount, tokenAmountRaw, minSolOutput } = params;
+  const { 
+    seller, mint, bondingCurve, associatedBondingCurve, sellerTokenAccount,
+    creatorVault, globalVolumeAccumulator, userVolumeAccumulator, feeConfig,
+    tokenAmountRaw, minSolOutput 
+  } = params;
 
-  // Instruction data: discriminator + amount + min_sol_output
-  const data = Buffer.alloc(24);
+  // Instruction data: discriminator + amount + min_sol_output + track_volume (Option<bool>)
+  const data = Buffer.alloc(25);
   SELL_DISCRIMINATOR.copy(data, 0);
   data.writeBigUInt64LE(tokenAmountRaw, 8);
   data.writeBigUInt64LE(minSolOutput, 16);
+  data.writeUInt8(0, 24); // track_volume = None (0 = Option::None)
 
   return new TransactionInstruction({
     keys: [
@@ -311,10 +342,14 @@ function createSellInstruction(params: {
       { pubkey: sellerTokenAccount, isSigner: false, isWritable: true },
       { pubkey: seller, isSigner: true, isWritable: true },
       { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: creatorVault, isSigner: false, isWritable: true },
       { pubkey: PUMP_EVENT_AUTHORITY, isSigner: false, isWritable: false },
       { pubkey: PUMP_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: globalVolumeAccumulator, isSigner: false, isWritable: true },
+      { pubkey: userVolumeAccumulator, isSigner: false, isWritable: true },
+      { pubkey: feeConfig, isSigner: false, isWritable: false },
+      { pubkey: PUMP_FEE_PROGRAM, isSigner: false, isWritable: false },
     ],
     programId: PUMP_PROGRAM_ID,
     data,

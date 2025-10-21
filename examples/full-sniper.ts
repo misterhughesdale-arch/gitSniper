@@ -300,7 +300,7 @@ async function main() {
   
   const client = new Client(config.geyser.endpoint, config.geyser.auth_token, undefined);
   
-  const request = {
+  const request: any = {
     accounts: {},
     slots: {},
     transactions: {

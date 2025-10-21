@@ -10,13 +10,19 @@ export function deriveBondingCurvePDA(mint: PublicKey): [PublicKey, number] {
 
 /**
  * Derives the associated bonding curve PDA (the token account owned by the bonding curve)
+ * This is the ATA for the bonding curve account, NOT a PDA
  */
-export function deriveAssociatedBondingCurvePDA(mint: PublicKey): [PublicKey, number] {
+export function deriveAssociatedBondingCurvePDA(mint: PublicKey): PublicKey {
   const [bondingCurve] = deriveBondingCurvePDA(mint);
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from("associated-bonding-curve"), mint.toBuffer()],
-    PUMP_PROGRAM_ID,
+  // Use getAssociatedTokenAddressSync with allowOwnerOffCurve = true
+  const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+  const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+  
+  const [address] = PublicKey.findProgramAddressSync(
+    [bondingCurve.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+    ASSOCIATED_TOKEN_PROGRAM_ID,
   );
+  return address;
 }
 
 /**
