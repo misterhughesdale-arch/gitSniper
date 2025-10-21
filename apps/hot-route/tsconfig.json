@@ -6,9 +6,6 @@
   "include": ["src", "../../types/**/*.d.ts"],
   "references": [
     { "path": "../../packages/config" },
-    { "path": "../../packages/logging" },
-    { "path": "../../packages/metrics" },
-    { "path": "../../packages/solana-client" },
     { "path": "../../packages/transactions" }
   ]
 }
