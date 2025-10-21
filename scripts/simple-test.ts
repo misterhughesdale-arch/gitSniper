@@ -147,11 +147,6 @@ async function buyToken(mintStr: string, receivedAt: number) {
     buyAttempts++;
     lastBuyTime = now;
     
-    if (!cachedBlockhash) {
-      console.log(`   ❌ No blockhash available`);
-      return;
-    }
-    
     const { transaction } = await buildBuyTransaction({
       connection,
       buyer: trader.publicKey,
