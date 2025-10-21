@@ -286,6 +286,11 @@ async function sellProcessor() {
  * Handle Geyser stream
  */
 async function handleStream(client: Client) {
+  // Get initial blockhash BEFORE starting stream
+  const { blockhash } = await connection.getLatestBlockhash();
+  cachedBlockhash = blockhash;
+  console.log(`✅ Initial blockhash: ${blockhash.slice(0, 16)}...\n`);
+
   const stream = await client.subscribe();
   console.log("✅ Stream connected\n");
 
@@ -336,11 +341,6 @@ async function handleStream(client: Client) {
       // Silent
     }
   });
-
-  // Get initial blockhash from RPC so we don't miss first tokens
-  const { blockhash } = await connection.getLatestBlockhash();
-  cachedBlockhash = blockhash;
-  console.log(`✅ Initial blockhash ready\n`);
 
   // Subscribe
   const request = {
