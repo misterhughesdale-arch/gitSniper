@@ -9,6 +9,7 @@
  */
 
 import "dotenv/config";
+import bs58 from "bs58";
 import Client, { CommitmentLevel } from "@triton-one/yellowstone-grpc";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
