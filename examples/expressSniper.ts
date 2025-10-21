@@ -9,6 +9,7 @@ import {
   TransactionInstruction,
   ComputeBudgetProgram,
   LAMPORTS_PER_SOL,
+  AccountInfo,
 } from "@solana/web3.js";
 import {
   TOKEN_PROGRAM_ID,
@@ -329,22 +330,24 @@ async function executeSell(
     const ata = getAssociatedTokenAddressSync(mint, wallet.publicKey);
 
     // Retry fetching account up to 3 times
-    let acc = null;
+    let acc: AccountInfo<Buffer> | null = null;
     for (let i = 0; i < 3; i++) {
       acc = await connection.getAccountInfo(ata);
       if (acc) break;
       await new Promise((r) => setTimeout(r, 1000));
     }
 
-    if (!acc) {
+    if (!acc || !acc.data) {
       log("ERROR", `❌ No ATA account for ${mintStr} at ${ata.toBase58()}`);
       return;
     }
-    if (acc.data.length < 72) {
-      log("ERROR", `❌ ATA data too short: ${acc.data.length}`);
+    
+    const accData = acc.data;
+    if (accData.length < 72) {
+      log("ERROR", `❌ ATA data too short: ${accData.length}`);
       return;
     }
-    const amt = acc.data.readBigUInt64LE(64);
+    const amt = accData.readBigUInt64LE(64);
     log("INFO", `📊 Token balance: ${amt.toString()}`);
     if (amt === BigInt(0)) {
       log("ERROR", `❌ Zero balance for ${mintStr}`);
@@ -508,7 +511,7 @@ async function main() {
     } catch {}
   });
 
-  const req: SubscribeRequest = {
+  const req: any = {
     accounts: {},
     slots: {},
     transactions: {
@@ -521,6 +524,7 @@ async function main() {
         accountRequired: [],
       },
     },
+    transactionsStatus: {},
     blocks: {},
     blocksMeta: {
       blockmeta: {},
