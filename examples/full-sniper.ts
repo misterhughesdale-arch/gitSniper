@@ -71,10 +71,23 @@ const metrics = {
   startTime: Date.now(),
 };
 
+// Rate limiting for Jito (1 tx/second)
+let lastJitoSend = 0;
+const JITO_RATE_LIMIT_MS = 1000;
+
 /**
  * Send transaction via Jito Block Engine
  */
 async function sendViaJito(transaction: Transaction): Promise<string> {
+  // Rate limiting: Wait if we sent too recently
+  const now = Date.now();
+  const timeSinceLastSend = now - lastJitoSend;
+  if (timeSinceLastSend < JITO_RATE_LIMIT_MS) {
+    const waitTime = JITO_RATE_LIMIT_MS - timeSinceLastSend;
+    await new Promise(r => setTimeout(r, waitTime));
+  }
+  lastJitoSend = Date.now();
+  
   const sendStart = Date.now();
   
   try {
