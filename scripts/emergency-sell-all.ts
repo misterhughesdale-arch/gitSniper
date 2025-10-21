@@ -50,19 +50,28 @@ async function main() {
     programId: TOKEN_PROGRAM_ID,
   });
 
-  console.log(`Found ${tokenAccounts.value.length} token accounts\n`);
+  const positions = tokenAccounts.value
+    .map(acc => {
+      const info = acc.account.data.parsed.info;
+      return {
+        mint: new PublicKey(info.mint),
+        mintStr: info.mint,
+        balance: parseFloat(info.tokenAmount.uiAmount),
+      };
+    })
+    .filter(p => p.balance > 0);
 
-  const sellPromises = tokenAccounts.value.map(async (accountInfo, index) => {
-    const account = accountInfo.account.data.parsed.info;
-    const mint = new PublicKey(account.mint);
-    const balance = parseFloat(account.tokenAmount.uiAmount);
+  console.log(`Found ${positions.length} tokens with balance to sell`);
+  console.log(`⏱️  Rate limited: 1 tx/second = ${positions.length} seconds total\n`);
 
-    if (balance === 0) {
-      console.log(`${index + 1}. ${account.mint.slice(0, 8)}... - SKIP (zero balance)`);
-      return null;
-    }
+  let sold = 0;
+  let failed = 0;
 
-    console.log(`${index + 1}. ${account.mint.slice(0, 8)}... - ${balance.toLocaleString()} tokens`);
+  // Sell ONE AT A TIME with 1 second delay
+  for (let i = 0; i < positions.length; i++) {
+    const { mint, mintStr, balance } = positions[i];
+    
+    console.log(`${i + 1}/${positions.length}. ${mintStr.slice(0, 8)}... - ${balance.toLocaleString()} tokens`);
 
     try {
       // Build sell
@@ -80,17 +89,19 @@ async function main() {
       const signature = await sendViaJito(transaction.serialize());
 
       console.log(`   ✅ Sent: ${signature.slice(0, 16)}...`);
-      return { mint: account.mint, signature, balance };
+      sold++;
     } catch (error) {
       console.log(`   ❌ Error: ${(error as Error).message}`);
-      return null;
+      failed++;
     }
-  });
 
-  const results = await Promise.allSettled(sellPromises);
-  const successful = results.filter((r) => r.status === "fulfilled" && r.value !== null).length;
+    // Wait 1 second before next sell (Jito rate limit)
+    if (i < positions.length - 1) {
+      await new Promise(r => setTimeout(r, 1000));
+    }
+  }
 
-  console.log(`\n📊 Results: ${successful}/${tokenAccounts.value.length} sold`);
+  console.log(`\n📊 Results: ${sold}/${positions.length} sold, ${failed} failed`);
 }
 
 main().catch(console.error);
