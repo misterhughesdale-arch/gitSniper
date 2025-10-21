@@ -156,7 +156,6 @@ async function buyToken(mintStr: string, receivedAt: number) {
       connection,
       buyer: trader.publicKey,
       mint,
-      creator: trader.publicKey, // Fallback - will be overridden by buildBuyTransaction
       amountSol: BUY_AMOUNT,
       slippageBps: 500,
       priorityFeeLamports: BUY_PRIORITY_FEE,
