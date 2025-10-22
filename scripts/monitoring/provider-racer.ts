@@ -140,38 +140,56 @@ async function startGrpc() {
         if (data.blocksMeta?.blockmeta?.slot) {
           latestSlot = Number(data.blocksMeta.blockmeta.slot);
         }
-        const txn = data.transaction;
-        if (txn?.transaction?.transaction?.message) {
-          const sig = txn.transaction?.transaction?.signatures?.[0];
-          const accounts = txn.transaction.transaction.message.accountKeys?.map((k:any) => (typeof k === 'string' ? k : k?.toBase58?.())) || [];
-          // Only record those mentioning Pump program in message
-          if (accounts.includes(PUMP_PROGRAM.toBase58()) && sig) {
-            const slot = Number(txn.transaction.meta?.slot || data.blockMeta?.slot || 0);
-            recordSeen(sig, 'yellowstone-grpc', slot);
-          }
+        
+        if (!data || !data.transaction) return;
+        
+        const txInfo = data.transaction.transaction ?? data.transaction;
+        if (!txInfo) return;
+        
+        // Extract signature
+        let sig: string | undefined;
+        if (txInfo.signature) {
+          sig = typeof txInfo.signature === 'string' 
+            ? txInfo.signature 
+            : Buffer.isBuffer(txInfo.signature)
+            ? txInfo.signature.toString('base64')
+            : undefined;
+        }
+        
+        if (sig) {
+          const slot = Number(txInfo.slot || data.blockMeta?.slot || 0);
+          recordSeen(sig, 'yellowstone-grpc', slot);
         }
       } catch {}
     });
+    
+    stream.on('error', (error: any) => {
+      log('gRPC stream error:', error.message);
+    });
 
-    const req: SubscribeRequest = {
+    const req = {
+      accounts: {},
+      slots: {},
       transactions: {
         pumpfun: {
           vote: false,
           failed: false,
-          signature: undefined,
-          accountInclude: [],
+          accountInclude: [PUMP_PROGRAM.toBase58()],
           accountExclude: [],
-          accountRequired: [PUMP_PROGRAM.toBase58()],
+          accountRequired: [],
         },
       },
-      blocksMeta: { blockmeta: {} },
+      transactionsStatus: {},
       entry: {},
-      accounts: {},
       blocks: {},
+      blocksMeta: {},
+      accountsDataSlice: [],
       commitment: CommitmentLevel.PROCESSED,
     };
 
-    stream.write(req);
+    await new Promise<void>((resolve, reject) => {
+      stream.write(req, (err: any) => err ? reject(err) : resolve());
+    });
     log('gRPC Yellowstone subscribed.');
   } catch (e:any) {
     log('gRPC init error:', e.message);
