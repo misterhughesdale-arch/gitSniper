@@ -320,7 +320,7 @@ async function handleStream(client: Client) {
     console.error("❌ Stream error:", error);
   });
 
-  // Main data handler - NEW TOKEN CREATIONS ONLY
+  // Main data handler - USING EXACT EXAMPLE PATTERN
   stream.on("data", async (data) => {
     try {
       // If we have a position, parse tx for momentum signals
@@ -329,35 +329,16 @@ async function handleStream(client: Client) {
         return;
       }
       
-      // NEW TOKEN DETECTION (only when no position)
-      if (!positionManager.hasPosition() && data && data.transaction) {
-        const txInfo = data.transaction.transaction ?? data.transaction;
-        const meta = txInfo.meta ?? data.transaction.meta;
-        if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
-
-        // Check for NEWLY CREATED tokens: in post but NOT in pre
-        const postBalances = meta.postTokenBalances || [];
-        const preBalances = meta.preTokenBalances || [];
+      // NEW TOKEN DETECTION - EXACT COPY FROM WORKING EXAMPLE
+      if (!positionManager.hasPosition()) {
+        const newMint = data?.transaction?.transaction?.meta?.postTokenBalances?.[0]?.mint;
         
-        // Get all mints that existed BEFORE this transaction
-        const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
+        if (!newMint) return;
+        if (processedMints.has(newMint)) return;
+        if (newMint === "So11111111111111111111111111111111111111112") return;
         
-        // Find mints that are NEW (in post but not in pre)
-        const newMints = postBalances
-          .filter((b: any) => b.mint && !preMints.has(b.mint))
-          .map((b: any) => b.mint)
-          .filter((mint: string) => {
-            // Filter out wrapped SOL and already processed
-            return mint !== "So11111111111111111111111111111111111111112" &&
-                   !mint.startsWith("So111111") &&
-                   !processedMints.has(mint);
-          });
-        
-        // Only NEW tokens (not existing ones being traded)
-        for (const newMint of newMints) {
-          console.log(`\n🎯 BRAND NEW TOKEN: ${newMint}`);
-          buyToken(newMint, Date.now()).catch(e => console.error(`   Buy failed: ${e.message}`));
-        }
+        console.log(`\n🎯 NEW TOKEN: ${newMint}`);
+        buyToken(newMint, Date.now()).catch(e => console.error(`   Buy failed: ${e.message}`));
       }
 
     } catch (error) {
