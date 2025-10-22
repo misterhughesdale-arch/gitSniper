@@ -40,14 +40,54 @@ const connection = new Connection(
 // ====== LOAD STRATEGY CONFIG ======
 const strategy = loadStrategyConfig(STRATEGY_FILE);
 
+// ====== CLEANUP EXISTING POSITIONS ON STARTUP ======
+async function cleanupExistingPositions() {
+  console.log("🧹 Checking for existing positions to clean up...\n");
+  
+  const tokenAccounts = await connection.getParsedTokenAccountsByOwner(trader.publicKey, {
+    programId: TOKEN_PROGRAM_ID,
+  });
+
+  let soldCount = 0;
+  for (const { account } of tokenAccounts.value) {
+    const balance = parseFloat(account.data.parsed.info.tokenAmount.uiAmount);
+    if (balance === 0) continue;
+
+    const mint = new PublicKey(account.data.parsed.info.mint);
+    console.log(`💸 Selling ${balance.toLocaleString()} of ${mint.toBase58().slice(0, 8)}...`);
+
+    try {
+      await sellWithSDK({
+        connection,
+        seller: trader,
+        mint,
+        tokenAmount: balance,
+        slippageBps: 5000, // 50% slippage - dump it
+        priorityFeeMicroLamports: 5000,
+      });
+      soldCount++;
+      console.log(`   ✅ Sold\n`);
+    } catch (e) {
+      console.log(`   ⏭️  Failed (will try manual later)\n`);
+    }
+  }
+  
+  if (soldCount > 0) {
+    console.log(`✅ Sold ${soldCount} positions. Waiting 5s...\n`);
+    await new Promise(r => setTimeout(r, 5000));
+  } else {
+    console.log(`✅ No existing positions to clean up\n`);
+  }
+}
+
 // ====== STARTUP LOG OUTPUT ======
 console.log("🎯 MOMENTUM-BASED SNIPER");
 console.log("========================\n");
-console.log(`Strategy: ${strategy.strategy.name}`);                                      // Descriptive name
-console.log(`Wallet: ${trader.publicKey.toBase58()}`);                                  // This bot's wallet
-console.log(`Buy: ${strategy.strategy.entry.buy_amount_sol} SOL`);                      // How much per buy
-console.log(`Breakeven: ${strategy.strategy.targets.breakeven_market_cap} SOL MC`);     // Target MC
-console.log(`Lull threshold: ${strategy.strategy.momentum.lull_threshold_seconds}s`);    // Max lull, s
+console.log(`Strategy: ${strategy.strategy.name}`);
+console.log(`Wallet: ${trader.publicKey.toBase58()}`);
+console.log(`Buy: ${strategy.strategy.entry.buy_amount_sol} SOL`);
+console.log(`Breakeven: ${strategy.strategy.targets.breakeven_market_cap} SOL MC`);
+console.log(`Lull threshold: ${strategy.strategy.momentum.lull_threshold_seconds}s`);
 console.log(`Buy/Sell ratio: ${strategy.strategy.momentum.buy_sell_ratio_threshold}\n`);
 
 // ====== STATS TRACKING ======
@@ -362,6 +402,9 @@ async function handleStream(client: Client) {
  * - Prints end-of-session stats on shutdown
  */
 async function main() {
+  // Cleanup existing positions before starting
+  await cleanupExistingPositions();
+  
   const client = new Client(GRPC_URL, X_TOKEN, undefined);
 
   // Print stats and close nicely on ctrl-C/SIGINT
