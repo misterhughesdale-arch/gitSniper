@@ -45,8 +45,11 @@ interface TxResult {
   method: string;
   signature: string;
   sendTime: number;
+  sendCompleteTime?: number;
   confirmTime?: number;
-  latencyMs?: number;
+  sendLatencyMs?: number;  // Time to send TX
+  confirmLatencyMs?: number;  // Time to confirm after send
+  totalLatencyMs?: number;  // Total time
   success: boolean;
   error?: string;
   priorityFeeMicroLamports: number;
@@ -157,6 +160,12 @@ async function testTransaction(
     const signature = json.result;
     result.signature = signature;
 
+    const sendCompleteTime = Date.now();
+    result.sendCompleteTime = sendCompleteTime;
+    result.sendLatencyMs = sendCompleteTime - sendTime;
+
+    console.log(`      📤 Send completed in ${result.sendLatencyMs}ms, waiting for confirmation...`);
+
     // Wait for confirmation
     const confirmation = await connection.confirmTransaction({
       signature,
@@ -166,7 +175,8 @@ async function testTransaction(
 
     const confirmTime = Date.now();
     result.confirmTime = confirmTime;
-    result.latencyMs = confirmTime - sendTime;
+    result.confirmLatencyMs = confirmTime - sendCompleteTime;
+    result.totalLatencyMs = confirmTime - sendTime;
     result.success = !confirmation.value.err;
 
     if (confirmation.value.err) {
@@ -177,7 +187,7 @@ async function testTransaction(
     result.success = false;
     result.error = (error as Error).message;
     result.confirmTime = Date.now();
-    result.latencyMs = result.confirmTime - result.sendTime;
+    result.totalLatencyMs = result.confirmTime - result.sendTime;
   }
 
   return result;
@@ -252,9 +262,9 @@ async function runTests() {
       results.push(result);
 
       const statusIcon = result.success ? "✅" : "❌";
-      const latency = result.latencyMs ? `${result.latencyMs}ms` : "timeout";
+      const totalTime = result.totalLatencyMs ? `${result.totalLatencyMs}ms` : "timeout";
       
-      console.log(`   ${statusIcon} TX ${i + 1}/${NUM_TESTS}: ${latency} ${result.success ? "" : `(${result.error})`}`);
+      console.log(`   ${statusIcon} TX ${i + 1}/${NUM_TESTS}: ${totalTime} total (send: ${result.sendLatencyMs}ms, confirm: ${result.confirmLatencyMs}ms) ${result.success ? "" : `(${result.error})`}`);
       if (result.signature) {
         console.log(`      Signature: ${result.signature.slice(0, 16)}...`);
       }
@@ -291,31 +301,42 @@ function printSummary() {
     const successful = methodResults.filter(r => r.success);
     const successRate = (successful.length / methodResults.length) * 100;
     
-    const latencies = successful
-      .map(r => r.latencyMs!)
+    const sendLatencies = successful
+      .map(r => r.sendLatencyMs!)
       .filter(l => l !== undefined)
       .sort((a, b) => a - b);
 
-    if (latencies.length === 0) {
+    const totalLatencies = successful
+      .map(r => r.totalLatencyMs!)
+      .filter(l => l !== undefined)
+      .sort((a, b) => a - b);
+
+    if (totalLatencies.length === 0) {
       console.log(`\n❌ ${method}`);
       console.log(`   Success rate: 0%`);
       console.log(`   No successful transactions`);
       continue;
     }
 
-    const avg = latencies.reduce((sum, l) => sum + l, 0) / latencies.length;
-    const median = latencies[Math.floor(latencies.length / 2)];
-    const p95 = latencies[Math.floor(latencies.length * 0.95)];
-    const p99 = latencies[Math.floor(latencies.length * 0.99)];
-    const min = latencies[0];
-    const max = latencies[latencies.length - 1];
+    const sendAvg = sendLatencies.reduce((sum, l) => sum + l, 0) / sendLatencies.length;
+    const sendMedian = sendLatencies[Math.floor(sendLatencies.length / 2)];
+    
+    const totalAvg = totalLatencies.reduce((sum, l) => sum + l, 0) / totalLatencies.length;
+    const totalMedian = totalLatencies[Math.floor(totalLatencies.length / 2)];
+    const p95 = totalLatencies[Math.floor(totalLatencies.length * 0.95)];
+    const p99 = totalLatencies[Math.floor(totalLatencies.length * 0.99)];
+    const min = totalLatencies[0];
+    const max = totalLatencies[totalLatencies.length - 1];
 
     console.log(`\n✅ ${method}`);
     console.log(`   Success rate: ${successRate.toFixed(1)}% (${successful.length}/${methodResults.length})`);
-    console.log(`   Latency (ms):`);
+    console.log(`   Send Latency:`);
+    console.log(`      Avg:    ${sendAvg.toFixed(0)}ms`);
+    console.log(`      Median: ${sendMedian.toFixed(0)}ms`);
+    console.log(`   Total Latency (send + confirm):`);
     console.log(`      Min:    ${min.toFixed(0)}ms`);
-    console.log(`      Median: ${median.toFixed(0)}ms`);
-    console.log(`      Avg:    ${avg.toFixed(0)}ms`);
+    console.log(`      Median: ${totalMedian.toFixed(0)}ms`);
+    console.log(`      Avg:    ${totalAvg.toFixed(0)}ms`);
     console.log(`      p95:    ${p95.toFixed(0)}ms`);
     console.log(`      p99:    ${p99.toFixed(0)}ms`);
     console.log(`      Max:    ${max.toFixed(0)}ms`);
