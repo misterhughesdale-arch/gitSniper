@@ -23,19 +23,19 @@ import { PositionManager, loadStrategyConfig } from "@fresh-sniper/auto-sell";
 import { readFileSync } from "fs";
 
 // ====== ENVIRONMENT/CONFIG SETTINGS ======
-const GRPC_URL = process.env.GRPC_URL!;                       // Geyser endpoint
-const X_TOKEN = process.env.X_TOKEN!;                         // Auth token for geyser
-const RPC_URL = process.env.SOLANA_RPC_PRIMARY!;              // RPC endpoint (for reads)
-const HELIUS_API_KEY = process.env.HELIUS_API_KEY!;          // For Helius Sender
-const TRADER_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json"; // Keypair location
-const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"; // PumpFun v2 address
-const STRATEGY_FILE = process.env.STRATEGY_FILE || "momentum-breakeven.toml"; // Config file
+const GRPC_URL = process.env.GRPC_URL!;
+const X_TOKEN = process.env.X_TOKEN!;
+const TRADER_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
+const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P";
+const STRATEGY_FILE = process.env.STRATEGY_FILE || "momentum-breakeven.toml";
 
 // ====== LOAD WALLET & SOLANA CONNECTION ======
-const keypairData = JSON.parse(readFileSync(TRADER_PATH, "utf-8")); // Secret key JSON
+const keypairData = JSON.parse(readFileSync(TRADER_PATH, "utf-8"));
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
-// Use standard RPC (Helius API key has issues)
-const connection = new Connection(RPC_URL, "processed");
+const connection = new Connection(
+  process.env.QUICKNODE_HTTP || "https://api.mainnet-beta.solana.com",
+  "confirmed"
+);
 
 // ====== LOAD STRATEGY CONFIG ======
 const strategy = loadStrategyConfig(STRATEGY_FILE);
