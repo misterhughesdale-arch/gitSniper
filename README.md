@@ -152,3 +152,4 @@ Contributions welcome! Please ensure:
 ## ⚠️ Disclaimer
 
 This software is for educational purposes. Use at your own risk. Always test with small amounts first.
+# gitSniper
