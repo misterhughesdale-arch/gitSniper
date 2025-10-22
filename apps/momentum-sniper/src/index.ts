@@ -295,24 +295,29 @@ async function handleStream(client: Client) {
         const meta = txInfo.meta ?? data.transaction.meta;
         if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
 
-        // Extract newly minted token from first postTokenBalance
-        const newMint = meta.postTokenBalances[0]?.mint;
+        // Check for NEWLY CREATED tokens: in post but NOT in pre
+        const postBalances = meta.postTokenBalances || [];
+        const preBalances = meta.preTokenBalances || [];
         
-        if (!newMint) return;
+        // Get all mints that existed BEFORE this transaction
+        const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
         
-        // DEDUPLICATE - Skip if already processed
-        if (processedMints.has(newMint)) return;
+        // Find mints that are NEW (in post but not in pre)
+        const newMints = postBalances
+          .filter((b: any) => b.mint && !preMints.has(b.mint))
+          .map((b: any) => b.mint)
+          .filter((mint: string) => {
+            // Filter out wrapped SOL and already processed
+            return mint !== "So11111111111111111111111111111111111111112" &&
+                   !mint.startsWith("So111111") &&
+                   !processedMints.has(mint);
+          });
         
-        // Filter out wrapped SOL
-        if (newMint === "So11111111111111111111111111111111111111112" || 
-            newMint.startsWith("So111111")) {
-          return;
+        // Only NEW tokens (not existing ones being traded)
+        for (const newMint of newMints) {
+          console.log(`\n🎯 BRAND NEW TOKEN: ${newMint}`);
+          buyToken(newMint, Date.now()).catch(e => console.error(`   Buy failed: ${e.message}`));
         }
-
-        console.log(`\n🎯 NEW TOKEN: ${newMint}`);
-        
-        // Attempt to buy
-        buyToken(newMint, Date.now()).catch(e => console.error(`   Buy failed: ${e.message}`));
       }
 
     } catch (error) {
