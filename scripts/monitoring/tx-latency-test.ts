@@ -75,7 +75,7 @@ async function testTransaction(
 
   try {
     // Get recent blockhash (exactly like Helius docs)
-    const { value: { blockhash } } = await connection.getLatestBlockhashAndContext("confirmed");
+    const { value: { blockhash, lastValidBlockHeight } } = await connection.getLatestBlockhashAndContext("confirmed");
 
     const TIP_ACCOUNTS = [
       "4ACfpUFoaSD9bfPdeu6DBt89gB6ENTeHBXCAi87NhDEE",
