@@ -107,7 +107,6 @@ export class HeliusSenderConnection extends Connection {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${this.heliusApiKey}`,
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -219,7 +218,6 @@ export async function sendViaHeliusSender(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
