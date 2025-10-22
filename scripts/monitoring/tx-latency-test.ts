@@ -18,8 +18,11 @@ import {
   LAMPORTS_PER_SOL,
   SystemProgram,
   Transaction,
+  VersionedTransaction,
+  TransactionMessage,
   sendAndConfirmTransaction,
   PublicKey,
+  ComputeBudgetProgram,
 } from "@solana/web3.js";
 import { createHeliusSenderConnection } from "../../packages/transactions/src/helius-sender";
 import { readFileSync } from "fs";
@@ -71,65 +74,78 @@ async function testTransaction(
   };
 
   try {
-    // Get recent blockhash
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("finalized");
+    // Get recent blockhash (exactly like Helius docs)
+    const { value: { blockhash } } = await connection.getLatestBlockhashAndContext("confirmed");
 
-    // Create transaction with proper instruction order
-    const tx = new Transaction({
-      recentBlockhash: blockhash,
-      feePayer: wallet.publicKey,
-    });
-    
-    // 1. Compute budget instructions (MUST be first)
-    tx.add(
-      SystemProgram.transfer({
-        fromPubkey: wallet.publicKey,
-        toPubkey: new PublicKey("ComputeBudget111111111111111111111111111111"),
-        lamports: 0,
-      })
-    );
-    
-    // 2. Actual transfer
-    tx.add(
+    const TIP_ACCOUNTS = [
+      "4ACfpUFoaSD9bfPdeu6DBt89gB6ENTeHBXCAi87NhDEE",
+      "D2L6yPZ2FmmmTKPgzaMKdhu6EWZcTpLy1Vhx8uvZe7NZ",
+    ];
+
+    // Build instructions array (exactly like Helius docs)
+    const instructions = [
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 100_000 }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFeeMicroLamports }),
       SystemProgram.transfer({
         fromPubkey: wallet.publicKey,
         toPubkey: wallet.publicKey,
         lamports: Math.floor(TEST_AMOUNT_SOL * LAMPORTS_PER_SOL),
-      })
-    );
+      }),
+    ];
 
-    // 3. For Helius Sender: Add tip transfer (if not skipping)
+    // Add tip transfer if not skipping (must be included for Helius Sender)
     if (!skipHeliusTip) {
-      const TIP_ACCOUNTS = [
-        "4ACfpUFoaSD9bfPdeu6DBt89gB6ENTeHBXCAi87NhDEE",
-        "D2L6yPZ2FmmmTKPgzaMKdhu6EWZcTpLy1Vhx8uvZe7NZ",
-      ];
       const tipAccount = TIP_ACCOUNTS[Math.floor(Math.random() * TIP_ACCOUNTS.length)];
-      
-      tx.add(
+      instructions.push(
         SystemProgram.transfer({
           fromPubkey: wallet.publicKey,
           toPubkey: new PublicKey(tipAccount),
-          lamports: 1_000_000, // 0.001 SOL tip
+          lamports: 0.001 * LAMPORTS_PER_SOL, // 0.001 SOL tip
         })
       );
     }
-    
+
+    // Build VersionedTransaction (exactly like Helius docs)
+    const transaction = new VersionedTransaction(
+      new TransactionMessage({
+        instructions,
+        payerKey: wallet.publicKey,
+        recentBlockhash: blockhash,
+      }).compileToV0Message()
+    );
+
     // Sign transaction
-    tx.sign(wallet);
+    transaction.sign([wallet]);
 
     // Send and start timer
     const sendTime = Date.now();
     result.sendTime = sendTime;
 
-    // Send with appropriate options
-    const sendOptions: any = {
-      skipPreflight: true,
-      maxRetries: 0,
-      preflightCommitment: "confirmed",
-    };
+    // Send directly via RPC (bypassing connection.sendRawTransaction for Helius Sender)
+    const response = await fetch((connection as any).rpcEndpoint || connection['_rpcEndpoint'], {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: Date.now().toString(),
+        method: 'sendTransaction',
+        params: [
+          Buffer.from(transaction.serialize()).toString('base64'),
+          {
+            encoding: 'base64',
+            skipPreflight: true,
+            maxRetries: 0,
+          }
+        ]
+      })
+    });
 
-    const signature = await connection.sendRawTransaction(tx.serialize(), sendOptions);
+    const json = await response.json();
+    if (json.error) {
+      throw new Error(json.error.message);
+    }
+
+    const signature = json.result;
     result.signature = signature;
 
     // Wait for confirmation
