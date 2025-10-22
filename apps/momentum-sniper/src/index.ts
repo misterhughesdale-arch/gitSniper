@@ -34,8 +34,11 @@ const STRATEGY_FILE = process.env.STRATEGY_FILE || "momentum-breakeven.toml"; //
 // ====== LOAD WALLET & SOLANA CONNECTION ======
 const keypairData = JSON.parse(readFileSync(TRADER_PATH, "utf-8")); // Secret key JSON
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
-// Use standard Solana connection for basic functionality
-const connection = new Connection(RPC_URL, { commitment: "[]" });
+// Use Helius Sender connection to route all sends through fast endpoint
+const connection = createHeliusSenderConnection(HELIUS_API_KEY, {
+  rpcEndpoint: RPC_URL,
+  commitment: "confirmed"
+});
 
 // ====== LOAD STRATEGY CONFIG ======
 const strategy = loadStrategyConfig(STRATEGY_FILE);
