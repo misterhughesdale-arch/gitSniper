@@ -124,11 +124,17 @@ async function buyToken(mintStr: string, receivedAt: number) {
     
     const signature = result.signature;
     
+    // Validate signature
+    if (!signature || signature === 'unknown' || signature.includes('[object')) {
+      console.log(`   ❌ Buy failed: Invalid signature returned`);
+      return;
+    }
+    
     console.log(`   📤 Buy TX: ${signature}`);
     console.log(`   🔗 https://solscan.io/tx/${signature}`);
     
     buySuccess++;
-    console.log(`   ✅ Buy CONFIRMED - starting momentum tracking`);
+    console.log(`   ✅ Buy sent - starting momentum tracking`);
     
     // Query how many tokens we got
     const tokenAccounts = await connection.getParsedTokenAccountsByOwner(trader.publicKey, {
