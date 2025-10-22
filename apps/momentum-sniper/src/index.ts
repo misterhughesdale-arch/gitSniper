@@ -95,13 +95,9 @@ async function buyToken(mintStr: string, receivedAt: number) {
     return;
   }
   
-  // Wallet balance check, will exit if depleted
+  // Check balance but don't exit - just log
   const balance = await connection.getBalance(trader.publicKey);
   const balanceSOL = balance / 1e9;
-  if (balanceSOL < strategy.strategy.risk.max_position_size_sol + 0.01) {
-    console.log(`\n🛑 Balance too low (${balanceSOL.toFixed(4)} SOL), stopping`);
-    process.exit(0);
-  }
   
   // Display detected token info
   console.log(`\n🪙 Token #${tokensDetected}: ${mintStr.slice(0, 8)}... (age: ${tokenAge}ms, balance: ${balanceSOL.toFixed(4)} SOL)`);
