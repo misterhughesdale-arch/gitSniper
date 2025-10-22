@@ -114,7 +114,7 @@ const positionManager = new PositionManager(
 /**
  * BUY LOGIC - called on new eligible token
  */
-async function buyToken(mintStr: string, receivedAt: number) {
+async function buyToken(mintStr: string, receivedAt: number, retryCount = 0) {
   // Deduplication & single-position check
   if (processedMints.has(mintStr)) return;
   if (positionManager.hasPosition()) {
@@ -190,7 +190,19 @@ async function buyToken(mintStr: string, receivedAt: number) {
     );
     
   } catch (error) {
-    console.log(`   ❌ Error: ${(error as Error).message}`);
+    const errorMsg = (error as Error).message;
+    
+    // Race condition: detected CREATE tx SO FAST that bonding curve not written yet
+    if (errorMsg.includes("Bonding curve account not found") && retryCount < 3) {
+      processedMints.delete(mintStr); // Allow retry
+      tokensDetected--; // Reset counter
+      const delayMs = 50 * (retryCount + 1); // 50ms, 100ms, 150ms
+      console.log(`   ⏳ Bonding curve not ready, retry #${retryCount + 1} in ${delayMs}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
+      return buyToken(mintStr, receivedAt, retryCount + 1);
+    }
+    
+    console.log(`   ❌ Error: ${errorMsg}`);
   }
 }
 
