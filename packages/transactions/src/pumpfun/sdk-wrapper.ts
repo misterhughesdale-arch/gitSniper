@@ -200,7 +200,15 @@ export async function sellWithSDK(params: SDKSellParams): Promise<SDKTransaction
       );
     }
 
-    const signature = typeof txResult === 'string' ? txResult : (txResult?.signature || txResult);
+    // Extract signature properly
+    let signature: string;
+    if (typeof txResult === 'string') {
+      signature = txResult;
+    } else if (txResult && typeof txResult === 'object') {
+      signature = txResult.signature || JSON.stringify(txResult);
+    } else {
+      signature = String(txResult);
+    }
 
     return {
       signature,
