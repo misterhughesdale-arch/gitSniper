@@ -361,19 +361,21 @@ async function handleStream(client: Client) {
   });
 
   // Geyser stream subscription filter: ONLY NEW TOKEN CREATIONS
-  // Listen for account updates to the global account (where new tokens are registered)
+  // Subscribe to transactions with PumpFun program AND global account (creates touch global)
   const GLOBAL_ACCOUNT = "4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"; // PumpFun global state
   
   const request = {
-    accounts: {
-      pumpfun_global: {
-        account: [GLOBAL_ACCOUNT],
-        owner: [],
-        filters: [],
+    accounts: {},
+    slots: {},
+    transactions: {
+      pumpfun_creates: {
+        vote: false,
+        failed: false,
+        accountInclude: [PUMPFUN_PROGRAM, GLOBAL_ACCOUNT], // Only TXs touching both PumpFun program AND global (= creates)
+        accountExclude: [],
+        accountRequired: [],
       },
     },
-    slots: {},
-    transactions: {},
     transactionsStatus: {},
     entry: {},
     blocks: {},
