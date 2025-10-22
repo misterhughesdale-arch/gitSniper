@@ -23,7 +23,7 @@ enabled = true                 # Enable or disable this strategy config
 ###############################################################################
 [strategy.entry]
 buy_amount_sol = 0.001         # ULTRA LOW for 0.00384 SOL balance
-max_slippage_bps = 1000        # Max slippage allowed on buy (basis points, 2000=20% for sniping)
+max_slippage_bps = 2000        # Max slippage allowed on buy (basis points, 2000=20% for sniping)
 priority_fee_lamports = 5000   # ULTRA minimal priority fee (5k = 0.000005 SOL)
 
 ###############################################################################
