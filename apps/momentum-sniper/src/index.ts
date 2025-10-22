@@ -18,7 +18,7 @@ import bs58 from "bs58"; // For base58 conversion, e.g. signatures
 import Client, { CommitmentLevel } from "@triton-one/yellowstone-grpc"; // Geyser stream client
 import { Connection, Keypair, PublicKey } from "@solana/web3.js"; // Solana types
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { buildBuyTransaction, buildSellTransaction } from "@fresh-sniper/transactions";
+import { buyWithSDK, sellWithSDK } from "@fresh-sniper/transactions";
 import { PositionManager, loadStrategyConfig } from "@fresh-sniper/auto-sell";
 import { readFileSync } from "fs";
 
@@ -109,30 +109,21 @@ async function buyToken(mintStr: string, receivedAt: number) {
     buyAttempts++;
     lastBuyTime = now;
     
-    // Build & send buy transaction (uses config params)
-    const { transaction } = await buildBuyTransaction({
+    // Buy using SDK (handles all account derivations)
+    const result = await buyWithSDK({
       connection,
-      buyer: trader.publicKey,
+      buyer: trader,
       mint,
-      amountSol: strategy.strategy.entry.buy_amount_sol,           // Buy amount in SOL
-      slippageBps: strategy.strategy.entry.max_slippage_bps,       // Max slippage
-      priorityFeeLamports: strategy.strategy.entry.priority_fee_lamports // Fee bump
+      amountSol: strategy.strategy.entry.buy_amount_sol,
+      slippageBps: strategy.strategy.entry.max_slippage_bps,
+      priorityFeeMicroLamports: strategy.strategy.entry.priority_fee_lamports,
+      useJito: false, // Set to true for Jito bundles
     });
     
-    transaction.sign(trader);
-    const signature = await connection.sendRawTransaction(transaction.serialize(), {
-      skipPreflight: true,
-    });
+    const signature = result.signature;
     
     console.log(`   📤 Buy TX: ${signature}`);
     console.log(`   🔗 https://solscan.io/tx/${signature}`);
-    
-    // Confirm onchain
-    const confirmation = await connection.confirmTransaction(signature, "confirmed");
-    if (confirmation.value.err) {
-      console.log(`   ❌ Buy FAILED: ${JSON.stringify(confirmation.value.err)}`);
-      return;
-    }
     
     buySuccess++;
     console.log(`   ✅ Buy CONFIRMED - starting momentum tracking`);
@@ -195,28 +186,21 @@ async function executeSell(mint: PublicKey, percentage: number, reason: string) 
       ? strategy.strategy.exit.dump_priority_fee
       : 10000;
     
-    const { transaction } = await buildSellTransaction({
+    // Sell using SDK
+    const result = await sellWithSDK({
       connection,
-      seller: trader.publicKey,
+      seller: trader,
       mint,
       tokenAmount: sellAmount,
       slippageBps: slippage,
-      priorityFeeLamports: priorityFee,
+      priorityFeeMicroLamports: priorityFee,
+      useJito: false,
     });
     
-    transaction.sign(trader);
-    const signature = await connection.sendRawTransaction(transaction.serialize(), {
-      skipPreflight: false,
-    });
+    const signature = result.signature;
     
     console.log(`   📤 Sell TX: ${signature}`);
     console.log(`   🔗 https://solscan.io/tx/${signature}`);
-    
-    const confirmation = await connection.confirmTransaction(signature, "confirmed");
-    if (confirmation.value.err) {
-      console.log(`   ❌ Sell FAILED: ${JSON.stringify(confirmation.value.err)}`);
-      return;
-    }
     
     sellSuccess++;
     console.log(`   ✅ Sell CONFIRMED`);

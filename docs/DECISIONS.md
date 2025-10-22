@@ -257,7 +257,37 @@ Use structured documentation approach:
 
 ---
 
+---
+
+### ADR-009: Integrate Official PumpFun SDK
+
+- **Date**: 2025-10-22  
+- **Status**: Accepted
+
+**Context**  
+- Manual transaction building is complex (16/14 accounts)
+- Account derivation errors are hard to debug
+- SDK provides tested buy/sell implementation
+- SDK includes Jito bundle support and relay integrations
+
+**Decision**  
+Integrate [pumpdotfun-repumped-sdk](https://github.com/D3AD-E/pumpdotfun-sdk-repumped):
+- Created `sdk-wrapper.ts` for easier integration
+- Updated momentum-sniper to use SDK methods
+- Kept original builders for reference/fallback
+- SDK handles all PDA derivations automatically
+
+**Consequences**  
+- ✅ Tested buy/sell logic (fewer bugs)
+- ✅ Jito bundle support ready (set `useJito: true`)
+- ✅ 4 relay options (Astra, 0Slot, NodeOne, NextBlock)
+- ✅ Anchor-based with full IDL
+- ⚠️ Additional dependency (but worth it)
+- ⚠️ SDK uses Anchor (adds weight but provides safety)
+
+---
+
 ## 5. Next Decision Number
 
-> **Next Decision Number**: ADR-009
+> **Next Decision Number**: ADR-010
 
