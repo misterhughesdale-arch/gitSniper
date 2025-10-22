@@ -29,7 +29,7 @@ const HELIUS_API_KEY = process.env.HELIUS_API_KEY!;
 const RPC_URL = process.env.SOLANA_RPC_PRIMARY || "https://api.mainnet-beta.solana.com";
 const QUICKNODE_HTTP = process.env.QUICKNODE_HTTP;
 const TRADER_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
-const NUM_TESTS = parseInt(process.env.NUM_TX_TESTS || "10");
+const NUM_TESTS = parseInt(process.env.NUM_TX_TESTS || "1");
 const TEST_AMOUNT_SOL = 0.0001; // Tiny amount for testing
 const DELAY_BETWEEN_TX = 2000; // 2s between tests
 
