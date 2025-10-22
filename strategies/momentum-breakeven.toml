@@ -72,6 +72,6 @@ dump_priority_fee = 50000          # Boosted priority fee for emergency dump
 ###############################################################################
 [strategy.risk]
 max_position_size_sol = 0.001      # Maximum solo position size allowed (in SOL)
-min_liquidity_sol = 1000           # Min liquidity required (in SOL) to participate
+min_liquidity_sol = 0              # Min liquidity required (in SOL) - disabled for sniping
 max_concurrent_positions = 1       # Max number of open positions at any time
 

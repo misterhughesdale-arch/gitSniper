@@ -35,7 +35,7 @@ const STRATEGY_FILE = process.env.STRATEGY_FILE || "momentum-breakeven.toml"; //
 const keypairData = JSON.parse(readFileSync(TRADER_PATH, "utf-8")); // Secret key JSON
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
 // Use standard RPC (Helius API key has issues)
-const connection = new Connection(RPC_URL, "confirmed");
+const connection = new Connection(RPC_URL, "processed");
 
 // ====== LOAD STRATEGY CONFIG ======
 const strategy = loadStrategyConfig(STRATEGY_FILE);
