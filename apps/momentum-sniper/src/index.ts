@@ -370,3 +370,6 @@ async function main() {
 
 main().catch(console.error); // Unhandled errors
 
+
+main().catch(console.error); // Unhandled errors
+
