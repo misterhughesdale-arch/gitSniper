@@ -18,19 +18,28 @@ import Client, { CommitmentLevel, SubscribeRequest } from '@triton-one/yellowsto
 // ---- Config ----
 const PUMP_PROGRAM = new PublicKey(process.env.PUMP_PROGRAM || '6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P');
 
+// Extract API keys from env
+const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
+const SHYFT_API_KEY = process.env.RPC_API_KEY || process.env.SHYFT_API_KEY;
+
+// Construct URLs from API keys (or use explicit URLs)
+const HELIUS_WS_URL = process.env.HELIUS_WS || (HELIUS_API_KEY ? `wss://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}` : undefined);
+const HELIUS_HTTP_URL = process.env.HELIUS_HTTP || (HELIUS_API_KEY ? `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}` : undefined);
+const SHYFT_HTTP_URL = process.env.SHYFT_HTTP || (SHYFT_API_KEY ? `https://rpc.shyft.to?api_key=${SHYFT_API_KEY}` : undefined);
+
 // WS endpoints
 const WS_PROVIDERS = [
-  { name: 'helius-ws', url: process.env.HELIUS_WS },
+  { name: 'helius-ws', url: HELIUS_WS_URL },
   { name: 'quicknode-ws', url: process.env.QUICKNODE_WS },
-  { name: 'solana-ws', url: process.env.SOLANA_WS },
+  { name: 'solana-ws', url: process.env.SOLANA_WS || 'wss://api.mainnet-beta.solana.com/' },
 ].filter(p => !!p.url) as {name:string;url:string}[];
 
 // HTTP endpoints (for RTT baseline)
 const HTTP_PROVIDERS = [
-  { name: 'helius-http', url: process.env.HELIUS_HTTP },
+  { name: 'helius-http', url: HELIUS_HTTP_URL },
+  { name: 'shyft-http', url: SHYFT_HTTP_URL },
   { name: 'quicknode-http', url: process.env.QUICKNODE_HTTP },
-  { name: 'solana-http', url: process.env.SOLANA_HTTP },
-  { name: 'shyft-http', url: process.env.SHYFT_HTTP },
+  { name: 'solana-http', url: process.env.SOLANA_HTTP || 'https://api.mainnet-beta.solana.com/' },
 ].filter(p => !!p.url) as {name:string;url:string}[];
 
 // Yellowstone gRPC
