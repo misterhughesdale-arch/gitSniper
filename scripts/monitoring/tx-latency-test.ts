@@ -350,9 +350,9 @@ function printSummary() {
   const heliusNoTip = byMethod.get("Helius Sender no tip (50k priority)");
   const standardRpc = byMethod.get("Standard RPC (50k priority)");
 
-  if (heliusTip && heliusNoTip && standardRpc) {
-    const heliusTipAvg = heliusTip.filter(r => r.success).reduce((sum, r) => sum + r.latencyMs!, 0) / heliusTip.filter(r => r.success).length;
-    const standardAvg = standardRpc.filter(r => r.success).reduce((sum, r) => sum + r.latencyMs!, 0) / standardRpc.filter(r => r.success).length;
+  if (heliusTip && standardRpc) {
+    const heliusTipAvg = heliusTip.filter(r => r.success).reduce((sum, r) => sum + r.totalLatencyMs!, 0) / heliusTip.filter(r => r.success).length;
+    const standardAvg = standardRpc.filter(r => r.success).reduce((sum, r) => sum + r.totalLatencyMs!, 0) / standardRpc.filter(r => r.success).length;
     
     const improvement = standardAvg - heliusTipAvg;
     const improvementPercent = (improvement / standardAvg) * 100;
