@@ -27,6 +27,7 @@ import { readFileSync } from "fs";
 // ====== CONFIG ======
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY!;
 const RPC_URL = process.env.SOLANA_RPC_PRIMARY || "https://api.mainnet-beta.solana.com";
+const QUICKNODE_HTTP = process.env.QUICKNODE_HTTP;
 const TRADER_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json";
 const NUM_TESTS = parseInt(process.env.NUM_TX_TESTS || "10");
 const TEST_AMOUNT_SOL = 0.0001; // Tiny amount for testing
@@ -185,6 +186,16 @@ async function runTests() {
       skipTip: true,
     },
   ];
+
+  // Add QuickNode if configured
+  if (QUICKNODE_HTTP) {
+    testConfigs.push({
+      name: "QuickNode RPC (50k priority)",
+      connection: new Connection(QUICKNODE_HTTP, "confirmed"),
+      priorityFee: 50000,
+      skipTip: true,
+    });
+  }
 
   // Run tests for each configuration
   for (const config of testConfigs) {
