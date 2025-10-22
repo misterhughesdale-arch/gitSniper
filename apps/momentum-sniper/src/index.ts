@@ -379,7 +379,7 @@ async function handleStream(client: Client) {
     blocks: {},
     blocksMeta: {},
     accountsDataSlice: [],
-    commitment: CommitmentLevel.CONFIRMED,
+    commitment: CommitmentLevel.PROCESSED, // PROCESSED = fastest, not CONFIRMED
   };
 
   // Actually send subscription filter request
