@@ -50,6 +50,7 @@ export class HeliusSenderConnection extends Connection {
   private heliusSenderUrl: string;
   private heliusApiKey: string;
   private tipLamports: number;
+  private enableTip: boolean = true; // Can be toggled per transaction type
 
   constructor(config: HeliusSenderConfig) {
     // Standard RPC endpoint for reads (account info, etc)
@@ -59,6 +60,13 @@ export class HeliusSenderConnection extends Connection {
     this.heliusApiKey = config.apiKey;
     this.heliusSenderUrl = "http://ewr-sender.helius-rpc.com/fast";
     this.tipLamports = config.tipLamports || 1000000; // 0.001 SOL default
+  }
+
+  /**
+   * Enable or disable tip for next transaction
+   */
+  setTipEnabled(enabled: boolean): void {
+    this.enableTip = enabled;
   }
 
   /**
@@ -136,12 +144,14 @@ export class HeliusSenderConnection extends Connection {
   }
 
   /**
-   * Override sendTransaction to add tip and route through Helius Sender
+   * Override sendTransaction to optionally add tip and route through Helius Sender
+   * 
+   * To skip tip, pass { skipHeliusTip: true } in options
    */
   override async sendTransaction(
     transaction: Transaction | VersionedTransaction,
     signers?: any,
-    options?: SendOptions
+    options?: SendOptions & { skipHeliusTip?: boolean }
   ): Promise<TransactionSignature> {
     let serialized: Buffer;
 
@@ -150,13 +160,19 @@ export class HeliusSenderConnection extends Connection {
       // (Tip should be added by caller before creating VersionedTransaction)
       serialized = Buffer.from(transaction.serialize());
     } else {
-      // Legacy transaction: add tip instruction
+      // Legacy transaction: conditionally add tip instruction
       if (!transaction.feePayer) {
         throw new Error("Transaction must have a feePayer to add tip");
       }
       
-      // Add tip to transaction
-      this.addTipToTransaction(transaction, transaction.feePayer);
+      // Add tip to transaction if enabled (can be controlled via setTipEnabled or options)
+      const shouldAddTip = options?.skipHeliusTip !== undefined 
+        ? !options.skipHeliusTip 
+        : this.enableTip;
+      
+      if (shouldAddTip) {
+        this.addTipToTransaction(transaction, transaction.feePayer);
+      }
       
       // Sign if signers provided
       if (signers && Array.isArray(signers) && signers.length > 0) {

@@ -32,6 +32,7 @@ export interface SDKSellParams {
   computeUnits?: number;
   useJito?: boolean;
   jitoTipLamports?: number;
+  skipHeliusTip?: boolean; // Skip Helius Sender tip (default: true for sells)
 }
 
 export interface SDKTransactionResult {
@@ -83,6 +84,11 @@ export async function buyWithSDK(params: SDKBuyParams): Promise<SDKTransactionRe
     useJito = false,
     jitoTipLamports = 1000000, // 0.001 SOL minimum tip
   } = params;
+
+  // Enable Helius tip for buys
+  if (connection instanceof HeliusSenderConnection) {
+    connection.setTipEnabled(true);
+  }
 
   const sdk = initPumpFunSDK(connection, buyer, {
     useJito,
@@ -147,7 +153,13 @@ export async function sellWithSDK(params: SDKSellParams): Promise<SDKTransaction
     computeUnits = 80000,
     useJito = false,
     jitoTipLamports = 100000,
+    skipHeliusTip = true, // Skip Helius tip for sells by default
   } = params;
+
+  // Disable Helius tip for sells (unless explicitly enabled)
+  if (connection instanceof HeliusSenderConnection) {
+    connection.setTipEnabled(!skipHeliusTip);
+  }
 
   const sdk = initPumpFunSDK(connection, seller, {
     useJito,
