@@ -34,6 +34,10 @@ export interface LoadConfigOptions {
 
 type UnknownRecord = Record<string, unknown>;
 
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function loadConfig(options: LoadConfigOptions = {}): FreshSniperConfig {
   const env = options.env ?? process.env;
   const configDir = resolve(process.cwd(), options.configDirectory ?? "config");
@@ -214,17 +218,13 @@ function substituteEnvPlaceholders<T>(value: T, env: NodeJS.ProcessEnv): T {
     return value.map((item) => substituteEnvPlaceholders(item, env)) as unknown as T;
   }
 
-  if (isRecord(value)) {
-    const mapped = Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, substituteEnvPlaceholders(item, env)]),
-    );
-    return mapped as T;
+  if (typeof value === "object" && value !== null) {
+    const result: UnknownRecord = {};
+    for (const [k, v] of Object.entries(value)) {
+      result[k] = substituteEnvPlaceholders(v, env);
+    }
+    return result as unknown as T;
   }
 
   return value;
-}
-
-
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
