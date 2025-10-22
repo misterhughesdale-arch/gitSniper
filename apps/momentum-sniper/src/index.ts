@@ -18,7 +18,7 @@ import bs58 from "bs58"; // For base58 conversion, e.g. signatures
 import Client, { CommitmentLevel } from "@triton-one/yellowstone-grpc"; // Geyser stream client
 import { Connection, Keypair, PublicKey } from "@solana/web3.js"; // Solana types
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { buyWithSDK, sellWithSDK } from "@fresh-sniper/transactions";
+import { buyWithSDK, sellWithSDK, CREATE_DISCRIMINATOR } from "@fresh-sniper/transactions";
 import { PositionManager, loadStrategyConfig } from "@fresh-sniper/auto-sell";
 import { readFileSync } from "fs";
 

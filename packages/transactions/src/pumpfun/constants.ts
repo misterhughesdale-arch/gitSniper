@@ -20,6 +20,11 @@ export const LAMPORTS_PER_SOL = 1_000_000_000;
 export const TOKEN_DECIMALS = 6;
 
 /**
+ * Create instruction discriminator (first 8 bytes of sha256("global:create"))
+ */
+export const CREATE_DISCRIMINATOR = Buffer.from([24, 30, 200, 40, 5, 28, 7, 119]);
+
+/**
  * Buy instruction discriminator (first 8 bytes of sha256("global:buy"))
  */
 export const BUY_DISCRIMINATOR = Buffer.from([102, 6, 61, 18, 1, 218, 235, 234]);
