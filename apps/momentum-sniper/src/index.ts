@@ -297,6 +297,15 @@ async function handleStream(client: Client) {
         const meta = txInfo.meta ?? data.transaction.meta;
         if (!meta) return;
 
+        // Only process transactions that involve PumpFun program
+        const accountKeys = txInfo.message?.accountKeys || [];
+        const involvesPumpFun = accountKeys.some((key: any) => {
+          const keyStr = typeof key === 'string' ? key : key.toString();
+          return keyStr === PUMPFUN_PROGRAM;
+        });
+        
+        if (!involvesPumpFun) return;
+
         // Gather post/pre token balances to detect newly minted tokens per tx
         const postBalances = meta.postTokenBalances || [];
         const preBalances = meta.preTokenBalances || [];
@@ -305,7 +314,12 @@ async function handleStream(client: Client) {
         // Tokens in post, *but not* in pre: newly minted
         const newTokens = postBalances
           .filter((b: any) => b.mint && !preMints.has(b.mint))
-          .map((b: any) => b.mint);
+          .map((b: any) => b.mint)
+          .filter((mint: string) => {
+            // Filter out wrapped SOL and other known non-PumpFun tokens
+            return mint !== "So11111111111111111111111111111111111111112" &&
+                   !mint.startsWith("So111111");
+          });
 
         for (const mint of newTokens) {
           // Attempt to buy
