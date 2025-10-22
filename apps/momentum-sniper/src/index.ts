@@ -87,11 +87,11 @@ async function buyToken(mintStr: string, receivedAt: number) {
   
   const tokenAge = Date.now() - receivedAt;
 
-  // Cooldown between buys (avoid rapid buying)
+  // Cooldown between buys (avoid rapid buying) - INCREASED for budget
   const now = Date.now();
   const timeSinceLastBuy = now - lastBuyTime;
-  if (lastBuyTime > 0 && timeSinceLastBuy < 20000) {
-    console.log(`\n⏸️  Cooldown: waiting before next buy (token age: ${tokenAge}ms)...`);
+  if (lastBuyTime > 0 && timeSinceLastBuy < 60000) {
+    console.log(`\n⏸️  Cooldown: ${Math.floor((60000 - timeSinceLastBuy)/1000)}s until next buy...`);
     return;
   }
   
