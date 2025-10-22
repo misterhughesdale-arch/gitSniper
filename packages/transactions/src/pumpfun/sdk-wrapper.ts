@@ -128,7 +128,26 @@ export async function buyWithSDK(params: SDKBuyParams): Promise<SDKTransactionRe
       );
     }
 
-    const signature = typeof txResult === 'string' ? txResult : (txResult?.signature || txResult);
+    // Extract signature - SDK returns ConfirmOptions object with signature property
+    let signature: string;
+    if (typeof txResult === 'string') {
+      signature = txResult;
+    } else if (txResult && typeof txResult === 'object') {
+      // Check all possible signature locations
+      signature = txResult.signature || 
+                  txResult.txid || 
+                  txResult.transactionSignature ||
+                  (txResult as any).toString?.() ||
+                  'unknown';
+      
+      // Log what we got for debugging
+      if (signature === 'unknown') {
+        console.error('DEBUG: txResult keys:', Object.keys(txResult));
+        console.error('DEBUG: txResult:', JSON.stringify(txResult).slice(0, 200));
+      }
+    } else {
+      signature = String(txResult);
+    }
 
     return {
       signature,
