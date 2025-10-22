@@ -58,7 +58,7 @@ export class HeliusSenderConnection extends Connection {
     super(rpcUrl, config.commitment || "confirmed");
 
     this.heliusApiKey = config.apiKey;
-    this.heliusSenderUrl = "http://ewr-sender.helius-rpc.com/fast";
+    this.heliusSenderUrl = "https://ewr-sender.helius-rpc.com/fast";
     this.tipLamports = config.tipLamports || 1000000; // 0.001 SOL default
   }
 
@@ -211,7 +211,7 @@ export async function sendViaHeliusSender(
   serializedTx: Buffer | Uint8Array,
   apiKey: string
 ): Promise<TransactionSignature> {
-  const heliusSenderUrl = "https://sender.helius-rpc.com/fast";
+  const heliusSenderUrl = "https://ewr-sender.helius-rpc.com/fast";
   const serializedB64 = Buffer.from(serializedTx).toString("base64");
 
   const response = await fetch(heliusSenderUrl, {
