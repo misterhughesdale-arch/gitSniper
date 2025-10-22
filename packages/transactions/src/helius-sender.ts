@@ -58,8 +58,8 @@ export class HeliusSenderConnection extends Connection {
     super(rpcUrl, config.commitment || "confirmed");
 
     this.heliusApiKey = config.apiKey;
-    // Use standard Helius RPC with api-key, not separate sender endpoint
-    this.heliusSenderUrl = `https://mainnet.helius-rpc.com/?api-key=${config.apiKey}`;
+    // Helius Sender endpoint (requires tip + priority fee)
+    this.heliusSenderUrl = "https://sender.helius-rpc.com/fast";
     this.tipLamports = config.tipLamports || 1000000; // 0.001 SOL default
   }
 
@@ -107,6 +107,7 @@ export class HeliusSenderConnection extends Connection {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${this.heliusApiKey}`,
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -211,13 +212,14 @@ export async function sendViaHeliusSender(
   serializedTx: Buffer | Uint8Array,
   apiKey: string
 ): Promise<TransactionSignature> {
-  const heliusSenderUrl = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
+  const heliusSenderUrl = "https://sender.helius-rpc.com/fast";
   const serializedB64 = Buffer.from(serializedTx).toString("base64");
 
   const response = await fetch(heliusSenderUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
