@@ -1,12 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "../../dist/packages/auto-sell",
+    "outDir": "dist",
     "rootDir": "src"
   },
-  "include": ["src"],
-  "references": [
-    { "path": "../transactions" }
-  ]
+  "include": ["src/**/*"],
+  "references": []
 }
-

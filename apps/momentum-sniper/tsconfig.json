@@ -5,5 +5,9 @@
     "rootDir": "src"
   },
   "include": ["src/**/*"],
-  "references": []
+  "references": [
+    { "path": "../../packages/auto-sell" },
+    { "path": "../../packages/transactions" }
+  ]
 }
+

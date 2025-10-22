@@ -1,26 +1,13 @@
 {
   "name": "@fresh-sniper/auto-sell",
   "version": "0.1.0",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "private": false,
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch"
+    "build": "tsc"
   },
   "dependencies": {
-    "@fresh-sniper/transactions": "workspace:*",
-    "@solana/web3.js": "^1.95.8",
-    "@solana/spl-token": "^0.4.9"
-  },
-  "devDependencies": {
-    "typescript": "^5.7.2"
+    "@solana/web3.js": "^1.95.0"
   }
 }
-

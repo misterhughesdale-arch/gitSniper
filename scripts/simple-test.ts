@@ -27,15 +27,15 @@ const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
 const connection = new Connection(RPC_URL, "confirmed");
 
 // Config
-const TEST_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const TEST_DURATION_MS = 555 * 60 * 1000; // 15 minutes
 const BUY_AMOUNT = 0.01; // SOL
-const BUY_PRIORITY_FEE = 33333; // microlamports per unit = ~10k lamports total
-const SELL_DELAY_MS = 3000; // 3 seconds
-const SELL_PRIORITY_FEE = 100; // minimal
-const MIN_BALANCE_SOL = 0.03;
+const BUY_PRIORITY_FEE = 50033; // microlamports per unit = ~10k lamports total
+const SELL_DELAY_MS = 10000; // 3 seconds
+const SELL_PRIORITY_FEE = 1000; // minimal
+const MIN_BALANCE_SOL = 0.01;
 const BUY_COOLDOWN_MS = 20000; // 20 seconds between buys
 const RECLAIM_EVERY_N_BUYS = 2; // Reclaim ATA rent every 2 buys
-const MAX_TOKEN_AGE_MS = 500; // Only buy tokens younger than 500ms
+const MAX_TOKEN_AGE_MS = 10; // Only buy tokens younger than 500ms
 
 const startTime = Date.now();
 const pendingSells: Array<{ mint: PublicKey; buyTime: number; buyTx: string }> = [];

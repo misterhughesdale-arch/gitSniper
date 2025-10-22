@@ -1,0 +1,77 @@
+################################################################################
+# Momentum Breakeven Strategy Configuration
+#
+# This config file defines all key parameters for the momentum-based breakeven 
+# automated trading strategy. The strategy is designed to:
+#   - Enter positions during high buy momentum.
+#   - Secure a breakeven exit when minimal profit is reached.
+#   - Monitor and respond to shifts in market momentum for exit decisions.
+#   - Enforce strong risk management and emergency exit behaviors.
+#
+# Sections below are categorized by their function in the trading lifecycle.
+################################################################################
+
+###############################################################################
+# [ Core Strategy Identity ]
+###############################################################################
+[strategy]
+name = "momentum_breakeven"    # Unique strategy identifier
+enabled = true                 # Enable or disable this strategy config
+
+###############################################################################
+# [ Entry Parameters: How buys are made ]
+###############################################################################
+[strategy.entry]
+buy_amount_sol = 0.01          # Amount in SOL to buy per entry
+max_slippage_bps = 500         # Max slippage allowed on buy (basis points, 500=5%)
+priority_fee_lamports = 50000  # Priority fee for buy transaction (in lamports)
+
+###############################################################################
+# [ Take-Profit and Exit Target Settings ]
+###############################################################################
+[strategy.targets]
+breakeven_market_cap = 9000    # (SOL) Market cap where partial sell triggers to recover investment
+full_exit_market_cap = 50000   # (SOL) Market cap for full position exit
+
+###############################################################################
+# [ Partial Breakeven Sell Settings ]
+###############################################################################
+[strategy.breakeven_sell]
+enabled = true                 # Whether to perform partial sells at breakeven
+sell_percentage = 50           # % of position to sell at breakeven (to cover buy)
+
+###############################################################################
+# [ Momentum-Based Monitoring & Exit Controls ]
+###############################################################################
+[strategy.momentum]
+lull_threshold_seconds = 2.0     # If no buys for this many seconds, exit
+monitor_window_seconds = 10      # Seconds in rolling window for buy/sell check
+buy_sell_ratio_threshold = 0.5   # Exit if ratio (buys/sells) drops below threshold
+
+###############################################################################
+# [ Real-Time Stream Monitoring Settings ]
+###############################################################################
+[strategy.monitoring]
+check_interval_ms = 100            # How often (milliseconds) momentum is checked
+stream_commitment = "confirmed"    # Commitment level for streaming market data
+
+###############################################################################
+# [ Forced Exit & Stop Loss Conditions ]
+###############################################################################
+[strategy.exit]
+# Immediate exit triggers, for stop-loss or max hold duration
+stop_loss_percent = -30            # Stop loss: exit if price drops 30% from peak
+time_based_exit_seconds = 300      # Max holding time (in seconds) before forced exit
+
+# Dumping behavior for urgent exits (liquidity crunch or panic conditions)
+dump_slippage_bps = 3000           # Allow up to 30% slippage in dump scenario
+dump_priority_fee = 50000          # Boosted priority fee for emergency dump
+
+###############################################################################
+# [ Risk Management Controls ]
+###############################################################################
+[strategy.risk]
+max_position_size_sol = 0.02       # Maximum solo position size allowed (in SOL)
+min_liquidity_sol = 1000           # Min liquidity required (in SOL) to participate
+max_concurrent_positions = 1       # Max number of open positions at any time
+

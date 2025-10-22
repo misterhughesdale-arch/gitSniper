@@ -1,0 +1,412 @@
+# Cursor AI Rules for GitSniper Project
+
+You are an expert in TypeScript, Solana blockchain development, and high-performance trading systems.
+
+## Project Context
+
+This is GitSniper - a Solana token sniper bot for PumpFun tokens with momentum-based trading strategies.
+
+### Tech Stack
+
+- **Language**: TypeScript (strict mode)
+- **Runtime**: Node.js 20+
+- **Package Manager**: pnpm with workspaces
+- **Blockchain**: Solana (mainnet-beta)
+- **Stream**: Yellowstone gRPC (Triton/Shyft)
+- **RPC**: Helius/Shyft
+- **Protocol**: PumpFun (6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P)
+
+## 📝 Documentation Policy
+
+**NEVER create random .md files. Use organized, persistent documentation.**
+
+### Approved Documentation Files:
+
+**Root Level** (only these):
+- `README.md` - Main project overview
+- `CHANGELOG.md` - Version history
+- `LICENSE` - License file
+
+**docs/** (organized documentation):
+- `docs/DECISIONS.md` - Architecture Decision Log (ADRs)
+- `docs/ACTIVITY.md` - Development activity log (what's done, what's next)
+- `docs/architecture.md` - System architecture
+- `docs/momentum-strategy.md` - Strategy explanation
+
+**Per-package**:
+- `packages/[name]/README.md` - Package-specific docs
+
+### Rules for Documentation:
+
+1. **UPDATE existing files** - Don't create new ones
+2. **Log decisions** → Update `docs/DECISIONS.md`
+3. **Track activity** → Update `docs/ACTIVITY.md`
+4. **Explain architecture** → Update `docs/architecture.md`
+5. **Document features** → Update relevant existing file or README.md
+
+### What NOT To Do:
+
+- ❌ DON'T create CODEBASE-REVIEW.md
+- ❌ DON'T create IMPLEMENTATION-STATUS.md
+- ❌ DON'T create *-CHANGES.md, *-SUMMARY.md
+- ❌ DON'T create temporary review files
+- ❌ DON'T create files at project root (except README/CHANGELOG/LICENSE)
+
+### Instead:
+
+- ✅ Add to `docs/DECISIONS.md` for architectural choices
+- ✅ Add to `docs/ACTIVITY.md` for work done/todo
+- ✅ Update `docs/architecture.md` for system changes
+- ✅ Update `README.md` for user-facing changes
+- ✅ Answer in chat for one-off questions
+
+## Code Style & Patterns
+
+### TypeScript
+
+- Use **strict mode** (no `any`, always type parameters)
+- Prefer `interface` over `type` for object shapes
+- Use `const` by default, `let` only when reassignment needed
+- Always specify return types for functions
+- Use optional chaining (`?.`) and nullish coalescing (`??`)
+
+### Naming Conventions
+
+- **Files**: kebab-case (e.g., `momentum-sniper.ts`)
+- **Variables/Functions**: camelCase (e.g., `buyToken`, `positionManager`)
+- **Classes/Interfaces**: PascalCase (e.g., `MomentumTracker`, `BuildTransactionResult`)
+- **Constants**: UPPER_SNAKE_CASE (e.g., `PUMPFUN_PROGRAM_ID`)
+- **Private members**: prefix with `_` (e.g., `_internalState`)
+
+### Async/Await Best Practices
+
+- Always handle errors in async functions with try/catch
+- Use Promise.all() for parallel operations
+- Never await in loops unless sequential execution required
+- Use async/await over .then() chains
+- Set timeouts for RPC calls to prevent hangs
+
+```typescript
+// ✅ Good
+const [balance, tokenAccount] = await Promise.all([
+  connection.getBalance(pubkey),
+  connection.getTokenAccountsByOwner(pubkey, { mint })
+]);
+
+// ❌ Bad
+const balance = await connection.getBalance(pubkey);
+const tokenAccount = await connection.getTokenAccountsByOwner(pubkey, { mint });
+```
+
+### Error Handling
+
+- Wrap RPC calls in try/catch with specific error types
+- Log errors with context (function name, parameters)
+- Never silently catch errors in production code
+- Use custom error classes for domain errors
+
+```typescript
+// ✅ Good
+try {
+  const signature = await connection.sendRawTransaction(tx.serialize());
+  logger.info('Transaction sent', { signature, mint });
+} catch (error) {
+  logger.error('Transaction failed', { 
+    error: error.message, 
+    mint, 
+    stack: error.stack 
+  });
+  throw new TransactionError('Failed to send transaction', { cause: error });
+}
+```
+
+## Solana Specific
+
+### Connection Management
+
+- Reuse Connection instances (don't create per request)
+- Use commitment level: "confirmed" for trading, "finalized" for critical ops
+- Set timeout on RPC calls (30s max)
+- Have fallback RPC endpoints ready
+
+### Transaction Building
+
+- Pre-compute PDAs when possible (cache them)
+- Use skipPreflight: true for speed (if safe)
+- Always set compute unit limit explicitly
+- Set priority fees based on Jito percentiles
+- Serialize and sign in correct order
+
+### Key Management
+
+- Never log private keys
+- Load keypairs once at startup
+- Use environment variables for paths
+- Clear sensitive data from memory when done
+
+## Yellowstone gRPC (Geyser Stream)
+
+### Stream Patterns
+
+```typescript
+// Always handle these events
+stream.on("data", async (data) => {
+  // Process data
+});
+
+stream.on("error", (error) => {
+  logger.error("Stream error", { error });
+  // Implement reconnection logic
+});
+
+stream.on("end", () => {
+  logger.warn("Stream ended");
+  // Reconnect with backoff
+});
+```
+
+### Subscription Filters
+
+- Be specific with accountInclude (avoid wildcards)
+- Set commitment: CommitmentLevel.CONFIRMED
+- Don't subscribe to more than needed
+- Handle backpressure (queue if processing is slow)
+
+### Data Parsing
+
+- Always check for null/undefined before accessing
+- Use optional chaining for nested properties
+- Validate data structure before using
+- Handle both string and Buffer signatures (use bs58)
+
+## PumpFun Specific
+
+### Transaction Structure
+
+Buy transactions require 16 accounts:
+0. global, 1. fee_recipient, 2. mint, 3. bonding_curve, 4. associated_bonding_curve,
+5. buyer_token_account, 6. buyer (signer), 7. system_program, 8. token_program,
+9. creator_vault, 10. event_authority, 11. program, 12. global_volume_accumulator,
+13. user_volume_accumulator, 14. fee_config, 15. fee_program
+
+Sell transactions require 14 accounts (no volume tracking).
+
+### Account Derivation
+
+- Cache PDA derivations (they're deterministic)
+- Fetch bonding curve state to get real creator address
+- Always derive creator_vault from bonding curve creator
+- Use idempotent ATA creation instruction
+
+### Priority Fees
+
+- Buy: Use p75-p99 Jito tips (competitive)
+- Sell: Use minimal fees (10k-50k microlamports)
+- Emergency dumps: High slippage + high priority
+- Monitor Jito tip floor: bundles.jito.wtf/api/v1/bundles/tip_floor
+
+## Trading Logic
+
+### Hot Path Optimization
+
+- Remove all blocking operations from buy path
+- Cache balance (update in background)
+- Fire-and-forget transactions (track confirmation separately)
+- Pre-compute accounts before token detected
+- Target: <50ms from detection to transaction sent
+
+### Momentum Tracking
+
+- Use rolling windows (10s typical)
+- Track both buy and sell events
+- Calculate ratio: buys / (buys + sells)
+- Detect lulls (time since last buy)
+- Exit when momentum lost (ratio < threshold OR lull)
+
+### Risk Management
+
+- Always check balance before buying
+- Enforce position limits (max 1-3 concurrent)
+- Set stop loss (-20% to -30%)
+- Time-based exit (5-10 minutes max)
+- Emergency exit on critical errors
+
+## Configuration
+
+### Strategy Files (TOML)
+
+- Use descriptive section names
+- Comment every parameter
+- Include units in names (e.g., `_seconds`, `_sol`, `_bps`)
+- Provide safe defaults
+- Validate all configs at startup with Zod
+
+### Environment Variables
+
+- Prefix project vars with `GITSNIPER_`
+- Use .env for local, environment for production
+- Never commit .env files
+- Provide .env.example template
+- Fail fast if required vars missing
+
+## Documentation
+
+### Code Comments
+
+- Comment WHY, not WHAT
+- Document complex algorithms inline
+- Add JSDoc for public functions
+- Link to relevant docs (Solana, PumpFun)
+- Update comments when code changes
+
+### Markdown Files
+
+- Use ATX headers (#, ##, ###) not setext (underlines)
+- Wrap long lines at 100 characters
+- Use fenced code blocks with language tags
+- Include emoji for visual hierarchy (✅, ⚠️, 🎯)
+- Add table of contents for long docs
+
+## Testing
+
+### Unit Tests
+
+- Test pure functions extensively
+- Mock external dependencies (RPC, stream)
+- Test error cases and edge cases
+- Use descriptive test names
+
+### Integration Tests
+
+- Test on devnet before mainnet
+- Start with tiny amounts (0.001 SOL)
+- Test full buy/sell cycle
+- Verify fees are as expected
+- Monitor for 24 hours minimum
+
+## Performance
+
+### Optimization Priorities
+
+1. Hot path (buy execution): <50ms
+2. Confirmation tracking: Async, non-blocking
+3. PDA caching: Pre-compute common addresses
+4. Balance caching: Update in background
+5. Sell execution: Can be slower (not competitive)
+
+### Monitoring
+
+- Log latency for critical operations
+- Track success rates (buys, sells, confirmations)
+- Monitor memory usage
+- Alert on errors/failures
+- Use structured logging (JSON)
+
+## Security
+
+### Critical Rules
+
+- NEVER log private keys or sensitive data
+- Validate all external input
+- Use parameterized queries (if using DB)
+- Sanitize user input in configs
+- Rate limit all external APIs
+- Implement circuit breakers
+
+### Safety Guards
+
+- Minimum balance checks before trading
+- Maximum spend limits per period
+- Cooldown between buys
+- Emergency stop mechanism
+- Manual override capability
+
+## Common Patterns
+
+### Singleton Pattern for Managers
+
+```typescript
+class PositionManager {
+  private static instance: PositionManager;
+  
+  private constructor() {}
+  
+  static getInstance(): PositionManager {
+    if (!PositionManager.instance) {
+      PositionManager.instance = new PositionManager();
+    }
+    return PositionManager.instance;
+  }
+}
+```
+
+### Event Emitter Pattern for Lifecycle
+
+```typescript
+class TradingBot extends EventEmitter {
+  async start() {
+    this.emit('starting');
+    // ...
+    this.emit('started');
+  }
+  
+  async stop() {
+    this.emit('stopping');
+    // ...
+    this.emit('stopped');
+  }
+}
+```
+
+### Builder Pattern for Transactions
+
+```typescript
+const result = await buildBuyTransaction({
+  connection,
+  buyer: trader.publicKey,
+  mint,
+  amountSol: 0.01,
+  slippageBps: 500,
+  priorityFeeLamports: 50000,
+});
+```
+
+## Debugging
+
+### Logging Best Practices
+
+- Use structured logging (JSON format)
+- Include correlation IDs for request tracking
+- Log performance metrics
+- Separate log levels: debug, info, warn, error
+- Don't log in hot path (too slow)
+
+### Common Issues
+
+- Transaction fails: Check priority fee, RPC health, account states
+- Stream disconnects: Implement exponential backoff reconnection
+- Import errors: Check package.json, tsconfig paths, build status
+- Type errors: Ensure packages built, check versions
+
+## Project-Specific Gotchas
+
+1. **PumpFun creator vault**: Must derive from bonding curve creator, not transaction sender
+2. **Account order matters**: Buy has 16 accounts, sell has 14, order must be exact
+3. **Token decimals**: Always 6 for PumpFun tokens
+4. **Signatures in stream**: Can be string or Buffer, always use bs58 to normalize
+5. **Market cap calculation**: Requires bonding curve state, can't calculate from transaction alone
+
+## When to Ask for Help
+
+- Unclear Solana concepts (PDAs, CPIs, etc.)
+- PumpFun program specifics (instruction format, account order)
+- Performance optimization beyond standard patterns
+- Security concerns or potential vulnerabilities
+- Architecture decisions (monorepo structure, package boundaries)
+
+## Resources
+
+- Solana Docs: https://docs.solana.com
+- Web3.js: https://solana-labs.github.io/solana-web3.js
+- Yellowstone: https://docs.triton.one
+- PumpFun: Check latest program code for changes

@@ -1,0 +1,23 @@
+{
+  "name": "@gitsniper/momentum-sniper",
+  "version": "1.0.0",
+  "private": true,
+  "bin": {
+    "momentum-sniper": "./dist/index.js"
+  },
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts"
+  },
+  "dependencies": {
+    "@fresh-sniper/auto-sell": "workspace:*",
+    "@fresh-sniper/transactions": "workspace:*",
+    "@solana/web3.js": "^1.95.0",
+    "@solana/spl-token": "^0.4.9",
+    "@triton-one/yellowstone-grpc": "^0.4.0",
+    "bs58": "^5.0.0",
+    "dotenv": "^16.0.0"
+  }
+}
+
