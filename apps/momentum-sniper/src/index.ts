@@ -283,95 +283,53 @@ async function handleStream(client: Client) {
     console.error("❌ Stream error:", error);
   });
 
-  // Main data handler - Account updates indicate new token creations
+  // Main data handler - NEW TOKEN CREATIONS ONLY
   stream.on("data", async (data) => {
     try {
-      // Account updates from global state = NEW TOKEN CREATED
-      if (data.account && !positionManager.hasPosition()) {
-        console.log("🆕 Global account updated - new token created");
-        
-        // Parse the account data to get the new mint address
-        // The last created token is stored in the global state
-        // For now, we'll use transaction-based detection as backup
-      }
-      
       // If we have a position, parse tx for momentum signals
       if (positionManager.hasPosition() && data.transaction) {
         parseTransactionForMomentum(data);
+        return;
       }
       
-      // Transaction-based detection: look for CREATE instruction discriminator
+      // NEW TOKEN DETECTION (only when no position)
       if (!positionManager.hasPosition() && data && data.transaction) {
         const txInfo = data.transaction.transaction ?? data.transaction;
         const meta = txInfo.meta ?? data.transaction.meta;
-        if (!meta) return;
+        if (!meta || !meta.postTokenBalances || meta.postTokenBalances.length === 0) return;
 
-        // Check if this TX has the CREATE instruction (discriminator: [24, 30, 200, 40, 5, 28, 7, 119])
-        const message = txInfo.message;
-        if (!message || !message.instructions) return;
+        // Extract newly minted token from first postTokenBalance
+        const newMint = meta.postTokenBalances[0]?.mint;
         
-        // Look for PumpFun create instruction in TX
-        let hasCreateInstruction = false;
-        for (const ix of message.instructions) {
-          const programIndex = typeof ix.programIdIndex === 'number' ? ix.programIdIndex : -1;
-          if (programIndex >= 0) {
-            const programId = message.accountKeys?.[programIndex];
-            const programIdStr = typeof programId === 'string' ? programId : programId?.toString();
-            
-            if (programIdStr === PUMPFUN_PROGRAM) {
-              // Check instruction data for CREATE discriminator
-              const data = ix.data;
-              const dataStr = typeof data === 'string' ? data : Buffer.from(data).toString('base64');
-              // CREATE discriminator starts with: GBhbKPSS (base64 of [24, 30, 200, 40, 5, 28, 7, 119])
-              if (dataStr && dataStr.startsWith('GBhbKPSS')) {
-                hasCreateInstruction = true;
-                break;
-              }
-            }
-          }
+        if (!newMint) return;
+        
+        // Filter out wrapped SOL
+        if (newMint === "So11111111111111111111111111111111111111112" || 
+            newMint.startsWith("So111111")) {
+          return;
         }
 
-        if (!hasCreateInstruction) return;
-
-        // This is a CREATE transaction - extract the mint
-        const postBalances = meta.postTokenBalances || [];
-        const preBalances = meta.preTokenBalances || [];
-        const preMints = new Set(preBalances.map((b: any) => b.mint).filter(Boolean));
-
-        // Tokens in post, *but not* in pre: newly created
-        const newTokens = postBalances
-          .filter((b: any) => b.mint && !preMints.has(b.mint))
-          .map((b: any) => b.mint)
-          .filter((mint: string) => {
-            // Filter out wrapped SOL
-            return mint !== "So11111111111111111111111111111111111111112" &&
-                   !mint.startsWith("So111111");
-          });
-
-        for (const mint of newTokens) {
-          console.log(`\n🎯 REAL TOKEN CREATION DETECTED: ${mint}`);
-          // Attempt to buy
-          buyToken(mint, Date.now()).catch(e => console.error(`Buy failed: ${e.message}`));
-        }
+        console.log(`\n🎯 NEW TOKEN: ${newMint}`);
+        
+        // Attempt to buy
+        buyToken(newMint, Date.now()).catch(e => console.error(`   Buy failed: ${e.message}`));
       }
 
     } catch (error) {
-      // Ignore parse errors here too
+      // Ignore parse errors
     }
   });
 
-  // Geyser stream subscription filter: ONLY NEW TOKEN CREATIONS
-  // Subscribe to transactions with PumpFun program AND global account (creates touch global)
-  const GLOBAL_ACCOUNT = "4wTV1YmiEkRvAtNtsSGPtUrqRYQMe5SKy2uB4Jjaxnjf"; // PumpFun global state
-  
+  // Geyser stream subscription (based on working example)
   const request = {
     accounts: {},
     slots: {},
     transactions: {
-      pumpfun_creates: {
+      pumpfun: {
         vote: false,
         failed: false,
-        accountInclude: [PUMPFUN_PROGRAM, GLOBAL_ACCOUNT], // Only TXs touching both PumpFun program AND global (= creates)
+        signature: undefined,
+        accountInclude: [PUMPFUN_PROGRAM], // PumpFun program
         accountExclude: [],
         accountRequired: [],
       },
@@ -381,7 +339,8 @@ async function handleStream(client: Client) {
     blocks: {},
     blocksMeta: {},
     accountsDataSlice: [],
-    commitment: CommitmentLevel.PROCESSED, // PROCESSED = fastest, not CONFIRMED
+    ping: undefined,
+    commitment: CommitmentLevel.PROCESSED, // PROCESSED for fastest updates
   };
 
   // Actually send subscription filter request
