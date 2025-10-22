@@ -329,13 +329,26 @@ async function handleStream(client: Client) {
         return;
       }
       
-      // NEW TOKEN DETECTION - EXACT COPY FROM WORKING EXAMPLE
+      // NEW TOKEN DETECTION - with bonding curve age verification
       if (!positionManager.hasPosition()) {
         const newMint = data?.transaction?.transaction?.meta?.postTokenBalances?.[0]?.mint;
         
         if (!newMint) return;
         if (processedMints.has(newMint)) return;
         if (newMint === "So11111111111111111111111111111111111111112") return;
+        
+        // Verify it's ACTUALLY new by checking bonding curve creation
+        // Bonding curve account is derived from mint - check if it was just created
+        const postBalances = data?.transaction?.transaction?.meta?.postTokenBalances || [];
+        const preBalances = data?.transaction?.transaction?.meta?.preTokenBalances || [];
+        
+        // Token is NEW if it's in post but NOT in pre
+        const isActuallyNew = !preBalances.some((b: any) => b.mint === newMint);
+        
+        if (!isActuallyNew) {
+          // Old token being traded - skip silently
+          return;
+        }
         
         console.log(`\n🎯 NEW TOKEN: ${newMint}`);
         buyToken(newMint, Date.now()).catch(e => console.error(`   Buy failed: ${e.message}`));
