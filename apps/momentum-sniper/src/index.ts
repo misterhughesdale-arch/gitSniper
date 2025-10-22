@@ -18,7 +18,7 @@ import bs58 from "bs58"; // For base58 conversion, e.g. signatures
 import Client, { CommitmentLevel } from "@triton-one/yellowstone-grpc"; // Geyser stream client
 import { Connection, Keypair, PublicKey } from "@solana/web3.js"; // Solana types
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { buyWithSDK, sellWithSDK, createHeliusSenderConnection } from "@fresh-sniper/transactions";
+import { buyWithSDK, sellWithSDK } from "@fresh-sniper/transactions";
 import { PositionManager, loadStrategyConfig } from "@fresh-sniper/auto-sell";
 import { readFileSync } from "fs";
 
@@ -34,8 +34,11 @@ const STRATEGY_FILE = process.env.STRATEGY_FILE || "momentum-breakeven.toml"; //
 // ====== LOAD WALLET & SOLANA CONNECTION ======
 const keypairData = JSON.parse(readFileSync(TRADER_PATH, "utf-8")); // Secret key JSON
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
-// Use standard connection for now (Helius Sender having issues)
-const connection = new Connection(RPC_URL, "confirmed");
+// Use Helius RPC for fast, reliable connection
+const connection = new Connection(
+  `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`,
+  { commitment: "confirmed", confirmTransactionInitialTimeout: 60000 }
+);
 
 // ====== LOAD STRATEGY CONFIG ======
 const strategy = loadStrategyConfig(STRATEGY_FILE);
@@ -111,7 +114,7 @@ async function buyToken(mintStr: string, receivedAt: number) {
     buyAttempts++;
     lastBuyTime = now;
     
-    // Buy using SDK (handles all account derivations)
+    // Buy using SDK
     const result = await buyWithSDK({
       connection,
       buyer: trader,
@@ -119,7 +122,7 @@ async function buyToken(mintStr: string, receivedAt: number) {
       amountSol: strategy.strategy.entry.buy_amount_sol,
       slippageBps: strategy.strategy.entry.max_slippage_bps,
       priorityFeeMicroLamports: strategy.strategy.entry.priority_fee_lamports,
-      useJito: false, // Set to true for Jito bundles
+      useJito: false,
     });
     
     const signature = result.signature;
