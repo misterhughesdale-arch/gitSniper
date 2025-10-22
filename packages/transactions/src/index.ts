@@ -7,5 +7,8 @@ export * from "./pumpfun/builders";
 // SDK wrapper (recommended)
 export * from "./pumpfun/sdk-wrapper";
 
+// Helius Sender
+export * from "./helius-sender";
+
 // Disabled - has external dependencies
 // export * from "./workflows";

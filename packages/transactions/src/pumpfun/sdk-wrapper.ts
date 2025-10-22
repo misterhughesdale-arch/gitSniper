@@ -8,9 +8,10 @@
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { AnchorProvider, Wallet } from "@coral-xyz/anchor";
 import { PumpFunSDK } from "pumpdotfun-repumped-sdk";
+import { HeliusSenderConnection } from "../helius-sender";
 
 export interface SDKBuyParams {
-  connection: Connection;
+  connection: Connection | HeliusSenderConnection;
   buyer: Keypair;
   mint: PublicKey;
   amountSol: number;
@@ -22,7 +23,7 @@ export interface SDKBuyParams {
 }
 
 export interface SDKSellParams {
-  connection: Connection;
+  connection: Connection | HeliusSenderConnection;
   seller: Keypair;
   mint: PublicKey;
   tokenAmount: number;
@@ -40,9 +41,11 @@ export interface SDKTransactionResult {
 
 /**
  * Initialize PumpFun SDK
+ * 
+ * Pass HeliusSenderConnection to route all sends through Helius Sender
  */
 export function initPumpFunSDK(
-  connection: Connection,
+  connection: Connection | HeliusSenderConnection,
   wallet: Keypair,
   options?: {
     jitoUrl?: string;
@@ -200,7 +203,7 @@ export async function sellWithSDK(params: SDKSellParams): Promise<SDKTransaction
  * Get SDK instance (for advanced usage)
  */
 export function getSDKInstance(
-  connection: Connection,
+  connection: Connection | HeliusSenderConnection,
   wallet: Keypair,
   options?: {
     jitoUrl?: string;

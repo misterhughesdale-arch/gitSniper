@@ -18,14 +18,15 @@ import bs58 from "bs58"; // For base58 conversion, e.g. signatures
 import Client, { CommitmentLevel } from "@triton-one/yellowstone-grpc"; // Geyser stream client
 import { Connection, Keypair, PublicKey } from "@solana/web3.js"; // Solana types
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { buyWithSDK, sellWithSDK } from "@fresh-sniper/transactions";
+import { buyWithSDK, sellWithSDK, createHeliusSenderConnection } from "@fresh-sniper/transactions";
 import { PositionManager, loadStrategyConfig } from "@fresh-sniper/auto-sell";
 import { readFileSync } from "fs";
 
 // ====== ENVIRONMENT/CONFIG SETTINGS ======
 const GRPC_URL = process.env.GRPC_URL!;                       // Geyser endpoint
 const X_TOKEN = process.env.X_TOKEN!;                         // Auth token for geyser
-const RPC_URL = process.env.SOLANA_RPC_PRIMARY!;              // RPC endpoint
+const RPC_URL = process.env.SOLANA_RPC_PRIMARY!;              // RPC endpoint (for reads)
+const HELIUS_API_KEY = process.env.HELIUS_API_KEY!;          // For Helius Sender
 const TRADER_PATH = process.env.TRADER_KEYPAIR_PATH || "./keypairs/trader.json"; // Keypair location
 const PUMPFUN_PROGRAM = "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P"; // PumpFun v2 address
 const STRATEGY_FILE = process.env.STRATEGY_FILE || "momentum-breakeven.toml"; // Config file
@@ -33,7 +34,8 @@ const STRATEGY_FILE = process.env.STRATEGY_FILE || "momentum-breakeven.toml"; //
 // ====== LOAD WALLET & SOLANA CONNECTION ======
 const keypairData = JSON.parse(readFileSync(TRADER_PATH, "utf-8")); // Secret key JSON
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
-const connection = new Connection(RPC_URL, "confirmed"); // Main Solana connection
+// Use standard Solana connection for basic functionality
+const connection = new Connection(RPC_URL, { commitment: "[]" });
 
 // ====== LOAD STRATEGY CONFIG ======
 const strategy = loadStrategyConfig(STRATEGY_FILE);
