@@ -22,7 +22,7 @@ enabled = true                 # Enable or disable this strategy config
 # [ Entry Parameters: How buys are made ]
 ###############################################################################
 [strategy.entry]
-buy_amount_sol = 0.008          # Amount in SOL to buy per entry (0.001 tip = 2% overhead)
+buy_amount_sol = 0.002          # Amount in SOL to buy per entry (~$0.40, 0.000005 tip = 0.25% overhead)
 max_slippage_bps = 500         # Max slippage allowed on buy (basis points, 500=5%)
 priority_fee_lamports = 50000  # Priority fee for buy transaction (in lamports)
 
