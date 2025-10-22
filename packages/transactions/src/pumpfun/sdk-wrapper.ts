@@ -128,23 +128,25 @@ export async function buyWithSDK(params: SDKBuyParams): Promise<SDKTransactionRe
       );
     }
 
-    // Extract signature - SDK returns ConfirmOptions object with signature property
+    // Extract signature - SDK returns different formats
     let signature: string;
+    
+    // Log what we got
+    console.log('DEBUG: typeof txResult:', typeof txResult);
+    console.log('DEBUG: txResult:', txResult);
+    
     if (typeof txResult === 'string') {
       signature = txResult;
     } else if (txResult && typeof txResult === 'object') {
-      // Check all possible signature locations
-      signature = txResult.signature || 
-                  txResult.txid || 
-                  txResult.transactionSignature ||
-                  (txResult as any).toString?.() ||
+      // Try all possible fields
+      signature = (txResult as any).signature || 
+                  (txResult as any).txid || 
+                  (txResult as any).transactionSignature ||
+                  (txResult as any).tx ||
                   'unknown';
       
-      // Log what we got for debugging
-      if (signature === 'unknown') {
-        console.error('DEBUG: txResult keys:', Object.keys(txResult));
-        console.error('DEBUG: txResult:', JSON.stringify(txResult).slice(0, 200));
-      }
+      console.error('DEBUG: txResult keys:', Object.keys(txResult));
+      console.error('DEBUG: extracted signature:', signature);
     } else {
       signature = String(txResult);
     }
