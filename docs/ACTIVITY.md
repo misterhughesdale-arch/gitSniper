@@ -90,10 +90,24 @@ This file tracks ongoing development activities, completed work, and next steps.
 - Workspace dependencies configured
 - TypeScript project references set up
 
+9. **PumpFun SDK Integration**
+   - Integrated pumpdotfun-repumped-sdk (v1.4.2)
+   - Created SDK wrapper for buy/sell operations
+   - Jito bundle support ready
+   - 4 relay integrations available (Astra, 0Slot, NodeOne, NextBlock)
+   - Documented in ADR-009
+
+10. **Provider Racer Tool**
+    - Created provider-racer.ts in scripts/monitoring/
+    - Races WebSocket, gRPC, and HTTP providers
+    - Measures detection latency for PumpFun transactions
+    - Shows which provider wins and average lag times
+    - Tracks HTTP RTT percentiles (p50, p95, p99)
+
 #### In Progress 🚧
 
 - Live testing with real trades (need .env setup)
-- Performance optimization (hot-path improvements)
+- Provider benchmarking (determine fastest for hot-path)
 
 #### Next Steps 📋
 
