@@ -71,10 +71,25 @@ async function testTransaction(
   };
 
   try {
-    // Create a simple transfer to self (minimal computation)
-    const tx = new Transaction();
+    // Get recent blockhash
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("finalized");
+
+    // Create transaction with proper instruction order
+    const tx = new Transaction({
+      recentBlockhash: blockhash,
+      feePayer: wallet.publicKey,
+    });
     
-    // Add priority fee compute budget
+    // 1. Compute budget instructions (MUST be first)
+    tx.add(
+      SystemProgram.transfer({
+        fromPubkey: wallet.publicKey,
+        toPubkey: new PublicKey("ComputeBudget111111111111111111111111111111"),
+        lamports: 0,
+      })
+    );
+    
+    // 2. Actual transfer
     tx.add(
       SystemProgram.transfer({
         fromPubkey: wallet.publicKey,
@@ -83,10 +98,22 @@ async function testTransaction(
       })
     );
 
-    // Get recent blockhash
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("finalized");
-    tx.recentBlockhash = blockhash;
-    tx.feePayer = wallet.publicKey;
+    // 3. For Helius Sender: Add tip transfer (if not skipping)
+    if (!skipHeliusTip) {
+      const TIP_ACCOUNTS = [
+        "4ACfpUFoaSD9bfPdeu6DBt89gB6ENTeHBXCAi87NhDEE",
+        "D2L6yPZ2FmmmTKPgzaMKdhu6EWZcTpLy1Vhx8uvZe7NZ",
+      ];
+      const tipAccount = TIP_ACCOUNTS[Math.floor(Math.random() * TIP_ACCOUNTS.length)];
+      
+      tx.add(
+        SystemProgram.transfer({
+          fromPubkey: wallet.publicKey,
+          toPubkey: new PublicKey(tipAccount),
+          lamports: 1_000_000, // 0.001 SOL tip
+        })
+      );
+    }
     
     // Sign transaction
     tx.sign(wallet);
@@ -101,10 +128,6 @@ async function testTransaction(
       maxRetries: 0,
       preflightCommitment: "confirmed",
     };
-
-    if (skipHeliusTip) {
-      sendOptions.skipHeliusTip = true;
-    }
 
     const signature = await connection.sendRawTransaction(tx.serialize(), sendOptions);
     result.signature = signature;
