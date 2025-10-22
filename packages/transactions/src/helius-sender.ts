@@ -14,12 +14,30 @@ import {
   Commitment,
   Finality,
   SendTransactionError,
+  PublicKey,
+  SystemProgram,
+  TransactionInstruction,
 } from "@solana/web3.js";
+
+// Helius Sender tip addresses (validators)
+const HELIUS_TIP_ADDRESSES = [
+  "4ACfpUFoaSD9bfPdeu6DBt89gB6ENTeHBXCAi87NhDEE",
+  "D2L6yPZ2FmmmTKPgzaMKdhu6EWZcTpLy1Vhx8uvZe7NZ",
+  "9bnz4RShgq1hAnLnZbP8kbgBg1kEmcJBYQq3gQbmnSta",
+  "5VY91ws6B2hMmBFRsXkoAAdsPHBJwRfBht4DXox3xkwn",
+  "2nyhqdwKcJZR2vcqCyrYsaPVdAnFoJjiksCXJ7hfEYgD",
+  "2q5pghRs6arqVjRvT5gfgWfWcHWmw1ZuCzphgd5KfWGJ",
+  "wyvPkWjVZz1M8fHQnMMCDTQDbkManefNNhweYk5WkcF",
+  "3KCKozbAaF75qEU33jtzozcJ29yJuaLJTy2jFdzUY8bT",
+  "4vieeGHPYPG2MmyPRcYjdiDmmhN3ww7hsFNap8pVN3Ey",
+  "4TQLFNWK8AovT1gFvda5jfw2oJeRMKEmw7aH6MGBJ3or",
+];
 
 export interface HeliusSenderConfig {
   apiKey: string;
   rpcEndpoint?: string; // Standard RPC for reads
   commitment?: Commitment;
+  tipLamports?: number; // Tip amount (default 0.001 SOL = 1000000 lamports)
 }
 
 /**
@@ -31,6 +49,7 @@ export interface HeliusSenderConfig {
 export class HeliusSenderConnection extends Connection {
   private heliusSenderUrl: string;
   private heliusApiKey: string;
+  private tipLamports: number;
 
   constructor(config: HeliusSenderConfig) {
     // Standard RPC endpoint for reads (account info, etc)
@@ -38,7 +57,31 @@ export class HeliusSenderConnection extends Connection {
     super(rpcUrl, config.commitment || "confirmed");
 
     this.heliusApiKey = config.apiKey;
-    this.heliusSenderUrl = "https://sender.helius-rpc.com/fast";
+    this.heliusSenderUrl = "http://ewr-sender.helius-rpc.com/fast";
+    this.tipLamports = config.tipLamports || 1000000; // 0.001 SOL default
+  }
+
+  /**
+   * Pick a random tip address
+   */
+  private getRandomTipAddress(): PublicKey {
+    const randomIndex = Math.floor(Math.random() * HELIUS_TIP_ADDRESSES.length);
+    return new PublicKey(HELIUS_TIP_ADDRESSES[randomIndex]);
+  }
+
+  /**
+   * Add tip instruction to transaction
+   */
+  private addTipToTransaction(transaction: Transaction, payer: PublicKey): Transaction {
+    const tipInstruction = SystemProgram.transfer({
+      fromPubkey: payer,
+      toPubkey: this.getRandomTipAddress(),
+      lamports: this.tipLamports,
+    });
+    
+    // Add tip as last instruction
+    transaction.add(tipInstruction);
+    return transaction;
   }
 
   /**
@@ -93,7 +136,7 @@ export class HeliusSenderConnection extends Connection {
   }
 
   /**
-   * Override sendTransaction to serialize and route through Helius Sender
+   * Override sendTransaction to add tip and route through Helius Sender
    */
   override async sendTransaction(
     transaction: Transaction | VersionedTransaction,
@@ -103,9 +146,19 @@ export class HeliusSenderConnection extends Connection {
     let serialized: Buffer;
 
     if (transaction instanceof VersionedTransaction) {
+      // VersionedTransaction: can't modify, send as-is
+      // (Tip should be added by caller before creating VersionedTransaction)
       serialized = Buffer.from(transaction.serialize());
     } else {
-      // Legacy transaction - sign if signers provided
+      // Legacy transaction: add tip instruction
+      if (!transaction.feePayer) {
+        throw new Error("Transaction must have a feePayer to add tip");
+      }
+      
+      // Add tip to transaction
+      this.addTipToTransaction(transaction, transaction.feePayer);
+      
+      // Sign if signers provided
       if (signers && Array.isArray(signers) && signers.length > 0) {
         transaction.sign(...signers);
       }
@@ -124,12 +177,14 @@ export function createHeliusSenderConnection(
   options?: {
     rpcEndpoint?: string;
     commitment?: Commitment;
+    tipLamports?: number; // Default 0.001 SOL (1000000 lamports)
   }
 ): HeliusSenderConnection {
   return new HeliusSenderConnection({
     apiKey,
     rpcEndpoint: options?.rpcEndpoint,
     commitment: options?.commitment || "confirmed",
+    tipLamports: options?.tipLamports || 1000000,
   });
 }
 

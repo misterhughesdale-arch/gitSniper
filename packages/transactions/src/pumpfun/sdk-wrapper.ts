@@ -81,7 +81,7 @@ export async function buyWithSDK(params: SDKBuyParams): Promise<SDKTransactionRe
     priorityFeeMicroLamports = 50000,
     computeUnits = 300000,
     useJito = false,
-    jitoTipLamports = 500000,
+    jitoTipLamports = 1000000, // 0.001 SOL minimum tip
   } = params;
 
   const sdk = initPumpFunSDK(connection, buyer, {
