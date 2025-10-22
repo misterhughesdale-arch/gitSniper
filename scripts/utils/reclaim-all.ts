@@ -11,7 +11,7 @@
 
 import "dotenv/config";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID, closeAccount } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, closeAccount } from "@solana/spl-token";
 import { readFileSync } from "fs";
 
 // Config

@@ -11,7 +11,7 @@
 import "dotenv/config";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { sellWithSDK } from "@fresh-sniper/transactions";
+import { sellWithSDK } from "../../packages/transactions/src/pumpfun/sdk-wrapper";
 import { readFileSync } from "fs";
 
 // Config
