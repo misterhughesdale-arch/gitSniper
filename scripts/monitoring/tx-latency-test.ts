@@ -150,6 +150,10 @@ async function testTransaction(
       throw new Error(json.error.message);
     }
 
+    if (!json.result) {
+      throw new Error('No signature returned from RPC');
+    }
+
     const signature = json.result;
     result.signature = signature;
 
@@ -220,15 +224,6 @@ async function runTests() {
       priorityFee: 50000,
       skipTip: false,
     },
-    {
-      name: "Helius Sender no tip (50k priority)",
-      connection: createHeliusSenderConnection(HELIUS_API_KEY, {
-        rpcEndpoint: RPC_URL,
-        commitment: "confirmed",
-      }),
-      priorityFee: 50000,
-      skipTip: true,
-    },
   ];
 
   // Add QuickNode if configured
@@ -260,7 +255,9 @@ async function runTests() {
       const latency = result.latencyMs ? `${result.latencyMs}ms` : "timeout";
       
       console.log(`   ${statusIcon} TX ${i + 1}/${NUM_TESTS}: ${latency} ${result.success ? "" : `(${result.error})`}`);
-      console.log(`      Signature: ${result.signature.slice(0, 16)}...`);
+      if (result.signature) {
+        console.log(`      Signature: ${result.signature.slice(0, 16)}...`);
+      }
 
       // Wait between transactions
       if (i < NUM_TESTS - 1) {
