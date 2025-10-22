@@ -22,8 +22,8 @@ enabled = true                 # Enable or disable this strategy config
 # [ Entry Parameters: How buys are made ]
 ###############################################################################
 [strategy.entry]
-buy_amount_sol = 0.002          # ULTRA LOW for testing (0.0067 SOL balance)
-max_slippage_bps = 2000        # Max slippage allowed on buy (basis points, 2000=20% for sniping)
+buy_amount_sol = 0.002         # ULTRA LOW for testing (0.0067 SOL balance)
+max_slippage_bps = 1000        # Max slippage allowed on buy (basis points, 2000=20% for sniping)
 priority_fee_lamports = 10000  # Minimal priority fee (10k = 0.00001 SOL)
 
 ###############################################################################
