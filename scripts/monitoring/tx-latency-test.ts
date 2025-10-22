@@ -121,8 +121,13 @@ async function testTransaction(
     const sendTime = Date.now();
     result.sendTime = sendTime;
 
-    // Send directly via RPC (bypassing connection.sendRawTransaction for Helius Sender)
-    const response = await fetch((connection as any).rpcEndpoint || connection['_rpcEndpoint'], {
+    // Send directly via RPC endpoint
+    // For HeliusSenderConnection, use the sender endpoint; otherwise use standard RPC
+    const endpoint = (connection as any).getSenderUrl 
+      ? (connection as any).getSenderUrl() 
+      : ((connection as any).rpcEndpoint || connection['_rpcEndpoint']);
+    
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

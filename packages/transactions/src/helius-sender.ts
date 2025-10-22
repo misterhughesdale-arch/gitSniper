@@ -72,6 +72,13 @@ export class HeliusSenderConnection extends Connection {
   }
 
   /**
+   * Get the sender endpoint URL (for direct fetch calls)
+   */
+  getSenderUrl(): string {
+    return this.heliusSenderUrl;
+  }
+
+  /**
    * Pick a random tip address
    */
   private getRandomTipAddress(): PublicKey {
