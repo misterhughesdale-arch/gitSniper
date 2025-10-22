@@ -38,6 +38,7 @@ export interface HeliusSenderConfig {
   rpcEndpoint?: string; // Standard RPC for reads
   commitment?: Commitment;
   tipLamports?: number; // Tip amount (default 0.001 SOL = 1000000 lamports)
+  region?: 'ewr' | 'slc' | 'lon' | 'fra' | 'ams' | 'sg' | 'tyo'; // Regional endpoint
 }
 
 /**
@@ -60,7 +61,8 @@ export class HeliusSenderConnection extends Connection {
     this.heliusApiKey = config.apiKey;
     // Helius Sender endpoint (HTTP for backend, requires tip + priority fee)
     // Use regional HTTP for lowest latency (not HTTPS)
-    this.heliusSenderUrl = "http://ewr-sender.helius-rpc.com/fast"; // Newark
+    const region = config.region || 'slc'; // Default to Salt Lake City (central US)
+    this.heliusSenderUrl = `http://${region}-sender.helius-rpc.com/fast`;
     this.tipLamports = config.tipLamports || 1000000; // 0.001 SOL default
   }
 
@@ -202,6 +204,7 @@ export function createHeliusSenderConnection(
     rpcEndpoint?: string;
     commitment?: Commitment;
     tipLamports?: number; // Default 0.001 SOL (1000000 lamports)
+    region?: 'ewr' | 'slc' | 'lon' | 'fra' | 'ams' | 'sg' | 'tyo'; // Regional endpoint
   }
 ): HeliusSenderConnection {
   return new HeliusSenderConnection({
@@ -209,6 +212,7 @@ export function createHeliusSenderConnection(
     rpcEndpoint: options?.rpcEndpoint,
     commitment: options?.commitment || "confirmed",
     tipLamports: options?.tipLamports || 1000000,
+    region: options?.region,
   });
 }
 
