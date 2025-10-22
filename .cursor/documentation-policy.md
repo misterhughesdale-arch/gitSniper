@@ -19,13 +19,13 @@ Too many .md files clutter the project:
 
 ## ✅ New Policy
 
-### NEVER Create Documentation Unless:
+### NEVER Create Documentation Unless
 
-1. **User explicitly requests it**: "Create a document about X"
-2. **Initial package README**: When creating new package
+1. **User explicitly requests it** "Create a document about X"
+2. **Initial package README** When creating new package
 3. **Updating existing docs**: Editing files that already exist
 
-### Instead of Creating Docs:
+### Instead of Creating Docs
 
 1. **Answer in chat** - Just reply with the information
 2. **Add code comments** - Document in the code itself
