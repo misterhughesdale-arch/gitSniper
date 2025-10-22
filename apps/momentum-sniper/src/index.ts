@@ -34,11 +34,8 @@ const STRATEGY_FILE = process.env.STRATEGY_FILE || "momentum-breakeven.toml"; //
 // ====== LOAD WALLET & SOLANA CONNECTION ======
 const keypairData = JSON.parse(readFileSync(TRADER_PATH, "utf-8")); // Secret key JSON
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
-// Use Helius RPC for fast, reliable connection
-const connection = new Connection(
-  `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`,
-  { commitment: "confirmed", confirmTransactionInitialTimeout: 60000 }
-);
+// Use standard RPC (Helius API key has issues)
+const connection = new Connection(RPC_URL, "confirmed");
 
 // ====== LOAD STRATEGY CONFIG ======
 const strategy = loadStrategyConfig(STRATEGY_FILE);
@@ -300,6 +297,9 @@ async function handleStream(client: Client) {
         const newMint = meta.postTokenBalances[0]?.mint;
         
         if (!newMint) return;
+        
+        // DEDUPLICATE - Skip if already processed
+        if (processedMints.has(newMint)) return;
         
         // Filter out wrapped SOL
         if (newMint === "So11111111111111111111111111111111111111112" || 
