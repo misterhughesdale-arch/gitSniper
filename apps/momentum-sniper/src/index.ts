@@ -18,7 +18,7 @@ import bs58 from "bs58"; // For base58 conversion, e.g. signatures
 import Client, { CommitmentLevel } from "@triton-one/yellowstone-grpc"; // Geyser stream client
 import { Connection, Keypair, PublicKey } from "@solana/web3.js"; // Solana types
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { buyWithSDK, sellWithSDK, CREATE_DISCRIMINATOR } from "@fresh-sniper/transactions";
+import { buyWithSDK, sellWithSDK, CREATE_DISCRIMINATOR, deriveBondingCurvePDA, PUMP_PROGRAM_ID } from "@fresh-sniper/transactions";
 import { PositionManager, loadStrategyConfig } from "@fresh-sniper/auto-sell";
 import { readFileSync } from "fs";
 
@@ -144,6 +144,27 @@ async function buyToken(mintStr: string, receivedAt: number, retryCount = 0) {
   
   try {
     const mint = new PublicKey(mintStr);
+    
+    // DERIVE bonding curve PDA and wait for it to exist on-chain
+    const [bondingCurvePDA] = deriveBondingCurvePDA(mint);
+    
+    // Poll for bonding curve account to exist (max 300ms)
+    let accountExists = false;
+    for (let i = 0; i < 6; i++) {
+      const accountInfo = await connection.getAccountInfo(bondingCurvePDA);
+      if (accountInfo) {
+        accountExists = true;
+        console.log(`   ✅ Bonding curve ready (${i * 50}ms)`);
+        break;
+      }
+      if (i < 5) await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    
+    if (!accountExists) {
+      console.log(`   ❌ Bonding curve account never created (timeout)`);
+      return;
+    }
+    
     buyAttempts++;
     lastBuyTime = now;
     
@@ -190,19 +211,7 @@ async function buyToken(mintStr: string, receivedAt: number, retryCount = 0) {
     );
     
   } catch (error) {
-    const errorMsg = (error as Error).message;
-    
-    // Race condition: detected CREATE tx SO FAST that bonding curve not written yet
-    if (errorMsg.includes("Bonding curve account not found") && retryCount < 3) {
-      processedMints.delete(mintStr); // Allow retry
-      tokensDetected--; // Reset counter
-      const delayMs = 50 * (retryCount + 1); // 50ms, 100ms, 150ms
-      console.log(`   ⏳ Bonding curve not ready, retry #${retryCount + 1} in ${delayMs}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delayMs));
-      return buyToken(mintStr, receivedAt, retryCount + 1);
-    }
-    
-    console.log(`   ❌ Error: ${errorMsg}`);
+    console.log(`   ❌ Error: ${(error as Error).message}`);
   }
 }
 
