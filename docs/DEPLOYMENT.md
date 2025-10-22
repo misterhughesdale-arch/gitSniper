@@ -1,64 +1,112 @@
 # Deployment Guide
 
-## Pre-Deployment Checklist
+---
 
-- [ ] Tested with stream-only mode (`pnpm dev:working`)
-- [ ] Verified transaction building and simulation
-- [ ] Tested with small amounts (0.001 SOL)
-- [ ] Reviewed and validated all configuration
-- [ ] Wallet has sufficient SOL for fees (minimum 0.1 SOL recommended)
-- [ ] Monitoring and alerting set up
-- [ ] Backup RPC endpoints configured
+## 1. Pre-Deployment Checklist
 
-## Production Configuration
+### 1.1. Stream Verification
+- [ ] Test detection stream
+  - Run stream-only mode: `pnpm dev:working`
+  - Confirm tokens are being detected in real-time
 
-### config/production.toml
+### 1.2. Transaction Verification
+- [ ] Build and simulate transactions
+  - Use simulation mode for dry-run
+  - Ensure no simulation errors or unexpected reverts
 
-Create environment-specific config:
+### 1.3. Test Small-Scale Trade
+- [ ] Run test trade with minimal amount
+  - Set `buy_amount_sol` to 0.001 in config
+  - Observe buy/sell flow and check logs
+
+### 1.4. Configuration Audit
+- [ ] Review all TOML and environment variable settings
+  - Inspect `config/` and `.env` files
+  - Validate:
+    - Correct RPC endpoints
+    - Correct geyser endpoint and token
+    - Strategy parameters
+
+### 1.5. Wallet Readiness
+- [ ] Ensure wallet is funded and accessible
+  - Confirm at least 0.1 SOL for transaction fees
+  - Validate correct keypair path
+
+### 1.6. Monitoring & Alerting
+- [ ] Set up monitoring
+  - Check logging paths
+  - Configure automated alerts (failure/balance/latency)
+
+### 1.7. Fault Tolerance
+- [ ] Configure backup RPC endpoints
+  - Document fallback and failover settings
+  - Test switching to fallback under RPC outage
+
+---
+
+## 2. Production Configuration
+
+### 2.1. Production Config File (`config/production.toml`)
+- [ ] Create or edit the config file:
+  - `[environment]`
+    - `name = "production"`
+  - `[strategy]`
+    - `buy_amount_sol = 0.01`  # Adjust for production budget
+    - `max_slippage_bps = 300` # 3% max slippage
+  - `[jito]`
+    - `priority_fee_lamports = 150000` # Optimize for landing reliability
 
 ```toml
 [environment]
 name = "production"
 
 [strategy]
-buy_amount_sol = 0.01      # Adjust based on strategy
-max_slippage_bps = 300     # 3% for production
+buy_amount_sol = 0.01
+max_slippage_bps = 300
 
 [jito]
-priority_fee_lamports = 150000  # Higher for better landing
+priority_fee_lamports = 150000
 ```
 
-### Environment Variables
+### 2.2. Required Environment Variables
+
+- [ ] Set the following in your environment:
 
 ```bash
-FRESH_SNIPER_ENV=production
-SOLANA_RPC_PRIMARY=your-premium-rpc-endpoint
-GEYSER_ENDPOINT=grpc.ny.shyft.to:443
-GEYSER_AUTH_TOKEN=production-token
-TRADER_KEYPAIR_PATH=/secure/path/to/keypair.json
+FRESH_SNIPER_ENV=production                   # Sets production mode
+SOLANA_RPC_PRIMARY=your-premium-rpc-endpoint  # Premium RPC endpoint
+GEYSER_ENDPOINT=grpc.ny.shyft.to:443          # Geyser endpoint for stream
+GEYSER_AUTH_TOKEN=production-token            # Geyser authentication token
+TRADER_KEYPAIR_PATH=/secure/path/to/keypair.json # Secure trader keypair
 ```
 
-## Running in Production
+---
 
-### Using PM2
+## 3. Running in Production
+
+### 3.1. Using PM2 Process Manager
+
+- [ ] Install and configure PM2:
 
 ```bash
-# Install PM2
+# Install PM2 globally if not already installed
 npm install -g pm2
 
-# Start sniper
+
+# Start sniper process
 pm2 start "pnpm dev:full" --name fresh-sniper
 
-# Monitor
+# Monitor logs
 pm2 logs fresh-sniper
 
-# Stop
+# Stop the sniper
 pm2 stop fresh-sniper
 ```
 
-### Using systemd
+### 3.2. Using systemd Service
 
-Create `/etc/systemd/system/fresh-sniper.service`:
+- [ ] Create systemd service unit at `/etc/systemd/system/fresh-sniper.service`
+  - Replace user/path/environment as appropriate
 
 ```ini
 [Unit]
@@ -78,118 +126,150 @@ RestartSec=10
 WantedBy=multi-user.target
 ```
 
-Enable and start:
+- [ ] Enable, start, and monitor the service:
+
 ```bash
 sudo systemctl enable fresh-sniper
 sudo systemctl start fresh-sniper
 sudo journalctl -u fresh-sniper -f
 ```
 
-## Monitoring
+---
 
-### Metrics
+## 4. Monitoring & Metrics
 
-Check `logs/mvp-metrics.log`:
-```bash
-tail -f logs/mvp-metrics.log | jq '.summary'
-```
+### 4.1. Log Inspection
 
-### Key Metrics to Watch
+- [ ] Monitor real-time logs for metric output:
+  - Command: `tail -f logs/mvp-metrics.log | jq '.summary'`
+  - Verify periodic appearance of summary objects
 
-- `tokensDetected` - Should be >0 if Pump.fun is active
-- `simSuccess / simFailed` - Success rate should be >80%
-- `txConfirmed / txFailed` - Transaction success rate
-- Detection latency - Should be <10ms
+### 4.2. Metrics Breakdown
 
-### Alerts
+- tokensDetected:
+  - Should be >0 if Pump.fun is active
+- simSuccess / simFailed:
+  - Simulation success rate target >80%
+- txConfirmed / txFailed:
+  - Aim for high transaction confirmation rates
+- detection latency:
+  - Must be below 10ms for best execution
 
-Set up alerts for:
-- Zero tokens detected for >60 seconds (stream issue)
-- Simulation success rate <50% (RPC issues or insufficient SOL)
-- Transaction failure rate >20% (need to increase priority fee)
+### 4.3. Alerting System
 
-## Security
+- [ ] Set up dashboards / notifications for:
+  - No tokens detected for >60s (stream down)
+  - Simulation success rate <50% (RPC health)
+  - Transaction failure rate >20% (possible fee or infra issue)
 
-- **Never commit** keypairs or .env files
-- **Use dedicated wallet** for sniping only
-- **Rotate API keys** regularly
-- **Monitor wallet balance** - set up low-balance alerts
-- **Secure keypair storage** - consider hardware wallet or HSM for large amounts
+---
 
-## Scaling
+## 5. Security best practices
 
-### Multiple Instances
+### 5.1. Key and API Management
 
-Run separate instances for different strategies:
+- [ ] Never commit to version control:
+  - Keypairs (`.json`)
+  - `.env` files or secrets
+- [ ] Use a dedicated wallet for sniping
+- [ ] Periodically rotate API keys and geyser tokens
 
-```bash
-# Instance 1: Small buys, high frequency
-FRESH_SNIPER_ENV=production-small pnpm dev:full
+### 5.2. Wallet & Balance Safety
 
-# Instance 2: Larger buys, filtered
-FRESH_SNIPER_ENV=production-large pnpm dev:full
-```
+- [ ] Set up low-balance automated alerts
+- [ ] Consider hardware wallet or HSM for high balances
 
-### Load Balancing
+---
 
-- Use multiple RPC endpoints in `rpc.fallback_urls`
-- Rotate Jito tip accounts
-- Distribute across multiple servers if needed
+## 6. Scaling & High Availability
 
-## Troubleshooting
+### 6.1. Multi-Instance Strategies
 
-### High Failure Rate
+- [ ] Run separate processes for different configurations:
+  - Example:
+    - Small buys, high frequency:
+      - `FRESH_SNIPER_ENV=production-small pnpm dev:full`
+    - Larger buys, filtered selection:
+      - `FRESH_SNIPER_ENV=production-large pnpm dev:full`
 
-1. Increase `priority_fee_lamports`
-2. Check RPC endpoint latency
-3. Verify Jito tip amount is sufficient (minimum 1000 lamports)
+### 6.2. Load Distribution
 
-### Stream Disconnections
+- [ ] List and set multiple RPC endpoints in `rpc.fallback_urls`
+- [ ] Rotate Jito tip accounts periodically
+- [ ] Deploy across multiple servers for redundancy if needed
 
-- Check Shyft API quota
-- Verify network connectivity
-- Review reconnection backoff settings
+---
 
-### Out of SOL
+## 7. Troubleshooting Guide
 
-- Set up balance monitoring
-- Configure low-balance alerts
-- Implement auto-pause when balance low
+### 7.1. High Failure Rate on Transactions
 
-## Backup and Recovery
+- [ ] Troubleshooting steps:
+  1. Increase `priority_fee_lamports`
+  2. Check premium RPC provider latency
+  3. Ensure Jito tip meets minimum (at least 1000 lamports)
 
-### Backup Configuration
+### 7.2. Stream Disconnects
+
+- [ ] Troubleshooting steps:
+  - Check current Shyft API quota
+  - Test network connectivity and firewall rules
+  - Tune stream reconnection backoff parameters
+
+### 7.3. Running Low on SOL
+
+- [ ] Troubleshooting steps:
+  - Monitor wallet live balance in dashboard/logs
+  - Set up triggers for low-balance alerting
+  - Auto-pause bot when low balance detected
+
+---
+
+## 8. Backup and Recovery
+
+### 8.1. Config & Keypair Backups
+
+- [ ] Take regular encrypted backups:
+  - Backup configs, env, and keypairs:
 
 ```bash
 tar -czf backup-$(date +%Y%m%d).tar.gz config/ .env keypairs/
 ```
 
-### Trade History
+### 8.2. Trade & Metrics History
 
-Metrics logs contain all trade data:
+- [ ] Archive log data before purging:
+
 ```bash
 cp -r logs/ logs-backup-$(date +%Y%m%d)/
 ```
 
-## Maintenance
+---
 
-### Regular Tasks
+## 9. Maintenance and Updates
 
-- Daily: Check success rates and adjust fees
-- Weekly: Review trade performance and PnL
-- Monthly: Rotate API keys and update dependencies
+### 9.1. Ongoing Maintenance Tasks
 
-### Updates
+- [ ] Daily:
+  - Check success/failure rates in metrics log
+  - Adjust `priority_fee_lamports` if needed
+- [ ] Weekly:
+  - Review overall trade results, especially PnL
+  - Tune config and strategy parameters as needed
+- [ ] Monthly:
+  - Rotate API keys and geyser tokens
+  - Update all dependencies
+
+### 9.2. Update & Redeploy
+
+- [ ] To update and redeploy:
 
 ```bash
-# Update dependencies
-pnpm update
-
-# Rebuild
-pnpm clean
-pnpm build
-
-# Test before deploying
-pnpm dev:working
+pnpm update              # Update dependencies to latest
+pnpm clean               # Clean previous builds
+pnpm build               # Build the project for production
+pnpm dev:working         # Test thoroughly before full deployment
 ```
+
+---
 

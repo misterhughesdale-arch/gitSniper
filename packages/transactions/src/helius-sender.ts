@@ -58,7 +58,8 @@ export class HeliusSenderConnection extends Connection {
     super(rpcUrl, config.commitment || "confirmed");
 
     this.heliusApiKey = config.apiKey;
-    this.heliusSenderUrl = "https://ewr-sender.helius-rpc.com/fast";
+    // Use standard Helius RPC with api-key, not separate sender endpoint
+    this.heliusSenderUrl = `https://mainnet.helius-rpc.com/?api-key=${config.apiKey}`;
     this.tipLamports = config.tipLamports || 1000000; // 0.001 SOL default
   }
 
@@ -93,7 +94,7 @@ export class HeliusSenderConnection extends Connection {
   }
 
   /**
-   * Override sendRawTransaction to route through Helius Sender
+   * Override sendRawTransaction to route through Helius with optimized settings
    */
   override async sendRawTransaction(
     rawTransaction: Buffer | Uint8Array | Array<number>,
@@ -106,7 +107,6 @@ export class HeliusSenderConnection extends Connection {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.heliusApiKey}`,
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -116,8 +116,8 @@ export class HeliusSenderConnection extends Connection {
             serializedTx,
             {
               encoding: "base64",
-              skipPreflight: true, // Helius Sender requirement
-              maxRetries: 0, // Helius Sender requirement
+              skipPreflight: true,
+              maxRetries: 0,
               preflightCommitment: options?.preflightCommitment || "confirmed",
             },
           ],
@@ -211,14 +211,13 @@ export async function sendViaHeliusSender(
   serializedTx: Buffer | Uint8Array,
   apiKey: string
 ): Promise<TransactionSignature> {
-  const heliusSenderUrl = "https://ewr-sender.helius-rpc.com/fast";
+  const heliusSenderUrl = `https://mainnet.helius-rpc.com/?api-key=${apiKey}`;
   const serializedB64 = Buffer.from(serializedTx).toString("base64");
 
   const response = await fetch(heliusSenderUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       jsonrpc: "2.0",

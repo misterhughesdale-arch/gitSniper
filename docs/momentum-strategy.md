@@ -1,112 +1,192 @@
 # 🎯 Momentum-Based Auto-Sell Strategy
 
-**Status**: ✅ Implemented  
-**Date**: 2025-10-22
+**Status:** ✅ Implemented  
+**Date:** 2025-10-22
 
 ---
 
-## 📋 Overview
+## Table of Contents
 
-A sophisticated auto-sell strategy that monitors buy/sell pressure via Geyser stream and exits positions based on momentum signals.
-
-### Core Logic
-
-1. **Buy** → Token detected via stream
-2. **Monitor** → Track all buys/sells for that specific mint
-3. **Breakeven** → Sell 50% when market cap reaches 9000 SOL
-4. **Hold** → Continue holding while buys maintain momentum
-5. **Exit** → Dump remainder if:
-   - 2+ second lull (no buys)
-   - Sells > buys
-   - Max hold time reached
+1. [Strategy Overview](#strategy-overview)
+2. [Detailed Task Breakdown](#detailed-task-breakdown)
+3. [Implementation Structure](#implementation-structure)
+4. [Key Components](#key-components)
+5. [Usage Guide](#usage-guide)
+6. [Configuration Reference](#configuration-reference)
+7. [Performance and Use Cases](#performance-and-use-cases)
+8. [Testing Roadmap](#testing-roadmap)
+9. [Troubleshooting Guide](#troubleshooting-guide)
+10. [Planned Enhancements](#planned-enhancements)
+11. [Key Metrics](#key-metrics)
+12. [Risk Caveats](#risk-caveats)
 
 ---
 
-## 📦 Implementation
+## Strategy Overview
 
-### Package: `@fresh-sniper/auto-sell`
+A momentum-based auto-sell algorithm for Solana PumpFun tokens:  
+- **Buy** tokens at launch.  
+- **Monitor** real-time buy/sell pressure.
+- **Sell** 50% at a breakeven target.  
+- **Hold** remainder while momentum is positive.
+- **Exit** all if momentum drops or risk triggers.
 
-**Files Created**:
+### Decision Logic Flow
 
+1. **Token Detection (Buy Entry)**
+    - Monitor stream for new eligible tokens.
+    - Place buy order with config params.
+
+2. **Real-Time Tracking**
+    - Parse all buys and sells for the new token.
+    - Track rolling buy/sell ratio and buy frequency.
+
+3. **Breakeven Partial Exit**
+    - Once MC threshold hit, sell half position.
+    - Continue tracking remainder.
+
+4. **Momentum Assessment (Hold/Early Exit)**
+    - Continuously check:
+        - Has there been a lull (no buys) over X seconds?
+        - Are sells outpacing buys?
+        - Has max configured hold time elapsed?
+
+5. **Full Position Exit**
+    - If momentum lost or condition met:
+        - Execute sell of remaining tokens.
+        - Use "dump" slippage/fees for fast exit.
+
+---
+
+## Detailed Task Breakdown
+
+### 1. Token Detection & Stream Setup
+- [ ] Establish connection to Geyser stream.
+- [ ] Filter for newly-created PumpFun tokens.
+- [ ] For each detected token, start monitoring.
+
+### 2. Position Lifecycle Management
+- [ ] Place initial buy.
+- [ ] Initialize tracker for that mint.
+- [ ] Maintain active position state.
+
+#### Subtasks
+- [ ] Store buy transaction details.
+- [ ] Track entry price, market cap, timestamps.
+
+### 3. Momentum Tracking
+- [ ] Parse buy and sell transactions for the active mint.
+- [ ] Update rolling window with each event.
+
+#### Subtasks
+- [ ] Compute buy frequency (buys/sec) in window.
+- [ ] Calculate buy/sell ratio.
+- [ ] Record time since last buy.
+- [ ] Mark if lull or unfavorable ratio occurs.
+
+### 4. Breakeven and Exit Decision Engine
+- [ ] Check market cap after each buy event.
+  - [ ] If above breakeven target, trigger partial sell (50%).
+  - [ ] Mark partial exit state.
+- [ ] Evaluate on each tracker update:
+  - [ ] Has a lull exceeded the threshold?
+  - [ ] Has buy/sell ratio dropped below minimum?
+  - [ ] Has maximum hold time expired?
+- [ ] If any trigger active, issue full exit for remaining tokens.
+
+### 5. Transaction Execution
+- [ ] Submit sell transactions per current trigger (breakeven/dump).
+- [ ] Handle slippage and fee parameters.
+- [ ] Confirm transaction results.
+- [ ] Update position state.
+
+### 6. Logging & Metrics
+- [ ] Log every buy/sell with timestamp, price, reason.
+- [ ] Snapshot momentum state on entry, partial exit, exit.
+- [ ] Store PnL, hold times, reason for exit.
+
+---
+
+## Implementation Structure
+
+### Project Layout
+
+```
 packages/auto-sell/
 ├── src/
-│   ├── momentum-tracker.ts      ✅ Tracks buy/sell events & ratios
-│   ├── position-manager.ts      ✅ Manages position lifecycle
-│   ├── strategy-config.ts       ✅ Loads TOML configs
-│   └── index.ts                 ✅ Exports
+│   ├── momentum-tracker.ts      # Core: tracks buy/sell events & ratios
+│   ├── position-manager.ts      # Manages all position states
+│   ├── strategy-config.ts       # Loads params from TOML
+│   └── index.ts                 # Entry point exports
 ├── package.json
 └── tsconfig.json
-
-### Configuration: `strategies/momentum-breakeven.toml`
-
-```toml
-[strategy.targets]
-breakeven_market_cap = 9000  # Sell 50% at this market cap
-
-[strategy.momentum]
-lull_threshold_seconds = 2.0          # Exit if no buys
-monitor_window_seconds = 10           # Rolling window
-buy_sell_ratio_threshold = 0.5        # Exit if ratio < 0.5
-
-[strategy.exit]
-time_based_exit_seconds = 300         # Max 5 min hold
-dump_slippage_bps = 3000              # 30% for emergency
 ```
 
-### Script: `scripts/momentum-sniper.ts`
+### Key Configuration File
 
-New script that integrates the strategy:
+**strategies/momentum-breakeven.toml:**
+```toml
+[strategy.targets]
+breakeven_market_cap = 9000
 
+[strategy.momentum]
+lull_threshold_seconds = 2.0
+monitor_window_seconds = 10
+buy_sell_ratio_threshold = 0.5
+
+[strategy.exit]
+time_based_exit_seconds = 300
+dump_slippage_bps = 3000
+```
+
+### Main Integration Script
+
+- `scripts/momentum-sniper.ts`
+
+**Basic Usage:**
 ```bash
 tsx scripts/momentum-sniper.ts
 ```
 
 ---
 
-## 🔧 Key Features
+## Key Components
 
 ### 1. Momentum Tracker
 
-**Tracks**:
+**Task Decomposition:**
+- [ ] Expose interface for `recordBuy` and `recordSell`.
+  - [ ] Accepts amount, signature, timestamp.
+- [ ] Maintains windowed event lists.
+- [ ] Expose `.getState()` giving:
+  - - Recent buy/sell counts & amounts.
+  - - Buy/sell ratio.
+  - - Last buy timestamp.
+  - - Flags: hasLull, shouldExit.
 
-- Buy events (amount + signature)
-- Sell events (amount + signature)
-- Time since last buy
-- Buy/sell ratio in rolling window
-
-**Example**:
-
+**Example:**
 ```typescript
 const tracker = new MomentumTracker(mint, {
-  lullThresholdMs: 2000,      // 2 seconds
-  windowMs: 10000,            // 10 second window
-  buySellRatioThreshold: 0.5, // Exit if < 50%
+  lullThresholdMs: 2000,
+  windowMs: 10000,
+  buySellRatioThreshold: 0.5,
 });
 
 tracker.recordBuy(0.1, "sig123...");
 tracker.recordSell(0.05, "sig456...");
-
 const state = tracker.getState();
-// {
-//   recentBuys: 12,
-//   recentSells: 3,
-//   buySellRatio: 0.8,  // 80% buys
-//   hasLull: false,
-//   shouldExit: false
-// }
 ```
 
 ### 2. Position Manager
 
-**Manages**:
+**Responsibilities:**
+- [ ] Manage entire position lifecycle:
+  - [ ] Open position
+  - [ ] Trigger partial exit
+  - [ ] Monitor for exit conditions
+  - [ ] Execute full exit and close position
 
-- Position lifecycle (active → partial_exit → exited)
-- Breakeven sell execution
-- Momentum-based exit logic
-- Time-based exit enforcement
-
-**Example**:
-
+**Integration Point:**
 ```typescript
 const manager = new PositionManager(
   connection,
@@ -116,46 +196,34 @@ const manager = new PositionManager(
     await executeSell(mint, percentage, reason);
   }
 );
-
 manager.startPosition(mint, buyTx, 0.01, 100000000);
-
-// Manager automatically:
-// - Monitors momentum every 100ms
-// - Sells 50% at breakeven MC
-// - Dumps remainder on lull/sell pressure
 ```
 
 ### 3. Stream Integration
 
-**Monitors**:
-
-- All PumpFun transactions
-- Filters for specific mint once position is open
-- Parses buy/sell events from transaction metadata
-- Updates momentum tracker in real-time
-
-**Flow**:
-
-Geyser Stream → Parse Transaction →
-  If involves our mint → Extract buy/sell →
-      Update momentum tracker →
-      Check exit conditions
+**Tasks:**
+- [ ] Subscribe to all PumpFun transactions.
+- [ ] For each, check if relevant to active position.
+- [ ] Parse and push events to Momentum Tracker.
+- [ ] On each tracker update, evaluate all exit triggers.
 
 ---
 
-## 🎮 Usage
+## Usage Guide
 
 ### Quick Start
 
 ```bash
-# Run with default strategy
+# Default config
 tsx scripts/momentum-sniper.ts
 
-# Run with custom strategy
+# Custom config
 STRATEGY_FILE=my-strategy.toml tsx scripts/momentum-sniper.ts
 ```
 
 ### Example Output
+
+See full trade progress (auto-summarized):
 
 ```text
 🎯 MOMENTUM-BASED SNIPER
@@ -167,234 +235,179 @@ Buy: 0.01 SOL
 Breakeven: 9000 SOL MC
 Lull threshold: 2s
 Buy/Sell ratio: 0.5
-
+...
 ✅ Stream connected
-
-🪙 Token #1: EFPijYKn... (age: 5ms, balance: 0.0879 SOL)
-   📤 Buy TX: 3BxUfJbx...
-   🔗 <https://solscan.io/tx/3BxUfJbx>...
-   ✅ Buy CONFIRMED - starting momentum tracking
-
-📊 Position started: EFPijYKn...
-   Buy: 0.01 SOL, Balance: 100,000,000 tokens
-
-   [5s] Buys: 12, Sells: 3, Ratio: 80%, Last buy: 0s ago, Lull: NO
-   [10s] Buys: 18, Sells: 5, Ratio: 78%, Last buy: 1s ago, Lull: NO
-
-💰 Breakeven target reached! MC: 9,234 SOL
-   Selling 50% to recover initial investment
-   📤 Sell TX: 2AvFkPqL...
-   ✅ Sell CONFIRMED
-
-   [15s] Buys: 25, Sells: 8, Ratio: 76%, Last buy: 0s ago, Lull: NO
-   [20s] Buys: 26, Sells: 12, Ratio: 68%, Last buy: 2s ago, Lull: NO
-
-🚨 Momentum lost: lull detected
-   Buys: 26, Sells: 14, Ratio: 65%, Last buy: 3s ago, Lull: YES
-   Dumping remainder...
-   📤 Sell TX: 5CpMnJzW...
-   ✅ Sell CONFIRMED
-   ✅ Position closed: EFPijYKn..
+🪙 Token: EFPijYKn... Buy TX: 3BxUfJbx...
+✅ Buy confirmed
+[5s] Buys: 12, Sells: 3, Ratio: 80%, Lull: NO
+💰 Breakeven reached (9,234 SOL): Selling 50%
+...
+🚨 Lull detected: Dumping remainder
+✅ Position closed: EFPijYKn...
 ```
 
 ---
 
-## ⚙️ Configuration Guide
+## Configuration Reference
 
-### Entry Parameters
+### Entry Setup
 
 ```toml
 [strategy.entry]
-buy_amount_sol = 0.01          # Position size
-max_slippage_bps = 500         # 5% slippage
-priority_fee_lamports = 50000  # ~10k lamports total
+buy_amount_sol = 0.01
+max_slippage_bps = 500
+priority_fee_lamports = 50000
 ```
 
 ### Momentum Tuning
 
 ```toml
 [strategy.momentum]
-lull_threshold_seconds = 2.0         # How long to wait for buys
-monitor_window_seconds = 10          # Rolling window size
-buy_sell_ratio_threshold = 0.5       # Exit if buys/(buys+sells) < 0.5
+lull_threshold_seconds = 2.0
+monitor_window_seconds = 10
+buy_sell_ratio_threshold = 0.5
 ```
+> - **Aggressive:** `lull_threshold_seconds = 5.0`, `buy_sell_ratio_threshold = 0.3`
+> - **Conservative:** `lull_threshold_seconds = 1.0`, `buy_sell_ratio_threshold = 0.6`
 
-**Aggressive** (hold longer):
-
-- `lull_threshold_seconds = 5.0`
-- `buy_sell_ratio_threshold = 0.3`
-
-**Conservative** (exit faster):
-
-- `lull_threshold_seconds = 1.0`
-- `buy_sell_ratio_threshold = 0.6`
-
-### Target Settings
+### Targets
 
 ```toml
 [strategy.targets]
-breakeven_market_cap = 9000      # Sell 50% here
-full_exit_market_cap = 50000     # Complete exit target
+breakeven_market_cap = 9000
+full_exit_market_cap = 50000
 
 [strategy.breakeven_sell]
-enabled = true                    # Enable breakeven logic
-sell_percentage = 50              # Sell this % at breakeven
+enabled = true
+sell_percentage = 50
 ```
+> - To disable breakeven: set `[strategy.breakeven_sell] enabled = false`
 
-**Disable breakeven** (diamond hands):
-
-```toml
-[strategy.breakeven_sell]
-enabled = false
-```
-
-### Exit Conditions
+### Exit Logic
 
 ```toml
 [strategy.exit]
-stop_loss_percent = -30            # Exit if -30% from peak
-time_based_exit_seconds = 300      # Max 5 min hold
-dump_slippage_bps = 3000           # 30% slippage for dumps
-dump_priority_fee = 50000          # Higher fee for exits
+stop_loss_percent = -30
+time_based_exit_seconds = 300
+dump_slippage_bps = 3000
+dump_priority_fee = 50000
 ```
 
 ---
 
-## 📊 Performance Characteristics
+## Performance and Use Cases
 
 ### Strengths
-
-✅ **Momentum-aware** - Only holds while buy pressure continues  
-✅ **Risk-managed** - Breaks even early, risks only "house money"  
-✅ **Adaptive** - Responds to real-time market activity  
-✅ **Fast exits** - Dumps quickly when momentum lost  
+- ✅ Momentum-sensitive: holds only with buy pressure
+- ✅ Risk-managed: early recovery of capital
+- ✅ Adaptive: real-time reactivity
+- ✅ Rapid exits on momentum loss
 
 ### Weaknesses
+- ⚠️ Can exit on short/fake lulls
+- ⚠️ Requires liquid, busy tokens
+- ⚠️ High slippage on emergency exits
+- ⚠️ May miss top during monitoring window
 
-⚠️ **False signals** - May exit on temporary lulls  
-⚠️ **Requires liquidity** - Needs active trading to work  
-⚠️ **Slippage risk** - Emergency dumps at 30% slippage  
-⚠️ **Timing risk** - May miss peaks during monitoring window  
-
-### Best Use Cases
-
-1. **High-volume tokens** - Active trading for accurate signals
-2. **Early entry** - Buy within first few seconds
-3. **Trending markets** - Bull market with sustained interest
-4. **Small positions** - Risk only what you can afford to lose
+### Optimal Scenarios
+- High-volume, freshly-launched tokens
+- Market with positive trend
+- Small, diversified position sizing
 
 ---
 
-## 🔬 Testing Recommendations
+## Testing Roadmap
 
-### Phase 1: Observation (No Real Buys)
+**Testing Phases and Subtasks:**
 
-1. Comment out actual buy/sell execution
-2. Run script to observe momentum patterns
-3. Tune parameters based on observations
-4. Duration: 1-2 hours
+### Phase 1: Dry Run (No Buys)
+- [ ] Comment out all buy/sell executions.
+- [ ] Run to observe live trade flows.
+- [ ] Check event parsing and momentum calculations.
+- [ ] Adjust config for desired exit behavior.
 
-### Phase 2: Small Position Testing
+### Phase 2: Small-Scale Testing
+- [ ] Set `buy_amount_sol` to 0.001.
+- [ ] Perform multiple live trades.
+- [ ] Validate breakeven, early/lull, and time-based exits.
+- [ ] Tune momentum and target triggers.
 
-1. Start with 0.001 SOL positions
-2. Test breakeven logic
-3. Test momentum exit logic
-4. Duration: 24 hours, 10-20 trades
-
-### Phase 3: Full Strategy
-
-1. Increase to target position size (0.01 SOL)
-2. Run for extended period
-3. Track win rate, average hold time, PnL
-4. Duration: 1 week
+### Phase 3: Production Testing
+- [ ] Raise size to intended value (e.g. 0.01 SOL).
+- [ ] Monitor auto-exits and hold length.
+- [ ] Track PnL, losses on dumps, timing of entries/exits.
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting Guide
 
-### Position not exiting on lull
+### Issue: Position doesn't exit on lull
+- [ ] Lower `lull_threshold_seconds`
+- [ ] Check Geyser stream and TX parsing
+- [ ] Ensure buy/sell events are registered by tracker
 
-**Issue**: Holds too long despite no buys
+### Issue: Exits happen too early
+- [ ] Raise `lull_threshold_seconds`
+- [ ] Lower `buy_sell_ratio_threshold`
+- [ ] Expand `monitor_window_seconds`
 
-**Solutions**:
-
-- Decrease `lull_threshold_seconds`
-- Check stream is receiving transactions
-- Verify momentum tracker is recording events
-
-### Exits too early
-
-**Issue**: Sells before momentum truly lost
-
-**Solutions**:
-
-- Increase `lull_threshold_seconds`
-- Decrease `buy_sell_ratio_threshold`
-- Increase `monitor_window_seconds`
-
-### Breakeven never triggers
-
-**Issue**: Position never reaches target MC
-
-**Solutions**:
-
-- Lower `breakeven_market_cap` target
-- Verify MC calculation is correct
-- Check if token has enough liquidity
+### Issue: No breakeven exit
+- [ ] Lower `breakeven_market_cap`
+- [ ] Verify MC calculation and stream data quality
+- [ ] Confirm token activity/liquidity
 
 ---
 
-## 🚀 Future Enhancements
+## Planned Enhancements
 
-### Potential Improvements
+### Roadmap Items
 
-1. **Real market cap calculation** - Query bonding curve state
-2. **Volume-weighted momentum** - Weight by trade size
-3. **Multi-stage exits** - 25% at MC1, 50% at MC2, etc.
-4. **Social signals** - Integrate Twitter/Telegram sentiment
-5. **ML-based exit** - Train model on historical exits
+#### Near-Term
+- [ ] Real-time market cap from bonding curve
+- [ ] Volume-weighted momentum triggers
 
-### Advanced Features
+#### Mid/Long-Term
+- [ ] Multi-stage exits (portion sells at multiple MCs)
+- [ ] Social signal integration (Twitter, Telegram)
+- [ ] ML-driven exit strategy
 
-- **Trailing stop** - Exit if price drops X% from peak
-- **Volatility-based exits** - Adjust based on price volatility
-- **Correlation trading** - Monitor related tokens
-- **Portfolio mode** - Manage multiple positions
+#### Advanced
+- [ ] Trailing stop
+- [ ] Volatility/reactive exit logic
+- [ ] Portfolio/multi-position management
 
 ---
 
-## 📈 Metrics to Track
+## Key Metrics
 
 ### Per Trade
+- Entry & exit times/prices
+- Breakeven times/prices
+- Total hold time
+- Momentum state at entry/exit
+- Full PnL (gross, net)
 
-- Entry time & price
-- Breakeven time & price
-- Exit time & price
-- Hold duration
-- Momentum at entry/exit
-- PnL (gross & net)
-
-### Overall
-
-- Win rate (% profitable)
-- Average hold time
-- Average PnL per trade
+### Cumulative
+- Win rate (%)
+- Avg. hold time
+- Avg. PnL per trade
 - Max drawdown
-- Sharpe ratio
+- Sharpe ratio / risk-reward
 
 ---
 
-## ⚠️ Risk Warnings
+## Risk Caveats
 
-1. **High volatility** - PumpFun tokens are extremely volatile
-2. **Rug pulls** - Tokens can drop to zero instantly
-3. **Slippage** - Emergency exits at 30% slippage = significant loss
-4. **False signals** - Momentum can reverse suddenly
-5. **Technical risk** - Bugs, stream issues, RPC failures
+**BEWARE:**  
+- High volatility (PumpFun tokens)  
+- Real risk of rug-pulls (can go to zero)  
+- 30%+ slippage on emergency exits  
+- False momentum signals possible  
+- Technical/infra errors (stream, RPC)  
 
-**Only risk what you can afford to lose completely.**
+> **Never risk more than you are fully willing to lose.**
 
 ---
 
-**Status**: ✅ Ready for Testing  
-**Next**: Test with small positions, tune parameters, track results
+**Status:** ✅ Ready for Testing  
+**Next:** Begin small position tests, monitor, and tune params

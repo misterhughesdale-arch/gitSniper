@@ -1,44 +1,81 @@
 # Development Guide
 
-Guide for developers working on Fresh Sniper.
+A comprehensive guide for engineers contributing to Fresh Sniper.  
+**Sections:**  
+- [Architecture Overview](#architecture-overview)  
+- [Development Standards](#development-standards)  
+- [How to Add a New Package](#how-to-add-a-new-package)  
+- [Key Code Locations](#key-code-locations)  
+- [Testing & Validation](#testing--validation)  
+- [Feature Addition Guide](#feature-addition-guide)  
+- [Build & Clean System](#build--clean-system)  
+- [Debugging Checklist](#debugging-checklist)  
+- [Common Coding Patterns](#common-coding-patterns)  
+- [Next Steps](#next-steps)  
 
-## Architecture
+---
 
-Fresh Sniper follows a modular monorepo architecture:
+## Architecture Overview
 
-### Core Packages
+Fresh Sniper uses a modular TypeScript monorepo.  
+Understand where to place your work and its dependencies:
 
-- **config**: TOML configuration loader with Zod validation
-- **logging**: Structured JSON logging (pino-style)
-- **metrics**: Performance tracking with histograms and counters
-- **events**: Type-safe domain event bus
-- **store**: Trade position and history management
-- **solana-client**: Solana RPC/WebSocket/Jito client wrappers
-- **transactions**: Pump.fun transaction builders and PDAs
+### 1. Core Packages
 
-### Services
+- **config:**  
+  - Load TOML configs  
+  - Validate with Zod  
+- **logging:**  
+  - Pino-style structured JSON logging  
+- **metrics:**  
+  - Histograms, counters, and operational timings  
+- **events:**  
+  - Type-safe domain event bus for loosely-coupled modules  
+- **store:**  
+  - Trade position state & history  
+- **solana-client:**  
+  - Connection abstractions: RPC, WebSocket, Jito  
+- **transactions:**  
+  - Handles Pump.Fun transaction construction (buy, sell, PDA tools)
 
-- **geyser-stream**: Yellowstone gRPC listener for token events
+### 2. Services
 
-### Applications
+- **geyser-stream:**  
+  - Listens to Yellowstone gRPC for token events
 
-- **hot-route**: Express API for manual buy/sell endpoints
+### 3. Applications
 
-## Code Style
+- **hot-route:**  
+  - Express API exposing manual endpoints for buy/sell
 
-- TypeScript strict mode
-- No hardcoded values (use config)
-- Comprehensive error handling with try-catch
-- Structured logging for all operations
-- Type annotations on all functions
+---
 
-## Adding a New Package
+## Development Standards
+
+**Coding Style:**  
+- TypeScript strict mode  
+- _No hardcoded values_ (always use config)
+- Wrap critical ops in try/catch, propagate errors upward
+- All logs must use structured loggers (no `console.log` except in scripts)
+- Explicit typing everywhere (annotate all function signatures)
+- Consistent naming and file structure (see existing packages)
+
+---
+
+## How to Add a New Package
+
+Follow these steps to add and integrate a package:
+
+#### 1. Create New Package Structure
 
 ```bash
 mkdir -p packages/my-package/src
 cd packages/my-package
+```
 
-# Create package.json
+#### 2. Add `package.json`
+
+```bash
 cat > package.json << 'EOF'
 {
   "name": "@fresh-sniper/my-package",
@@ -48,8 +85,11 @@ cat > package.json << 'EOF'
   "private": false
 }
 EOF
+```
 
-# Create tsconfig.json
+#### 3. Add `tsconfig.json`
+
+```bash
 cat > tsconfig.json << 'EOF'
 {
   "extends": "../../tsconfig.base.json",
@@ -60,165 +100,186 @@ cat > tsconfig.json << 'EOF'
   "include": ["src/**/*"]
 }
 EOF
-
-# Update tsconfig.base.json paths
-# Update root tsconfig.json references
 ```
 
-## Key Files
+#### 4. Link to Monorepo
 
-### Transaction Builders
+- Update `tsconfig.base.json` with new path alias if applicable
+- Add new package to root `tsconfig.json` references array
 
-File: `packages/transactions/src/pumpfun/builders.ts`
+#### 5. Implement Package Code
 
-- `buildBuyTransaction()` - Constructs Pump.fun buy transactions
-- `buildSellTransaction()` - Constructs sell transactions
+- Place core logic in `src/`
+- Add type definitions
+- Export your API
 
-### PDAs
+#### 6. Add README and Tests
 
-File: `packages/transactions/src/pumpfun/pdas.ts`
+- Describe package use in its `README.md`
+- Place unit tests in `src/` alongside code
 
-- `deriveBondingCurvePDA()` - Get bonding curve account
-- `deriveAssociatedBondingCurvePDA()` - Get token account
-- `deriveAssociatedTokenAddress()` - Get user's token account
+---
 
-### Geyser Stream
+## Key Code Locations
 
-File: `services/geyser-stream/src/subscriptions/pumpfunCreations.ts`
+| Feature              | File Path                                               | Main Usage                          |
+|----------------------|--------------------------------------------------------|-------------------------------------|
+| Transaction Builders | `packages/transactions/src/pumpfun/builders.ts`        | `buildBuyTransaction`, `buildSellTransaction` |
+| PDA Helpers          | `packages/transactions/src/pumpfun/pdas.ts`            | PDA derivations                     |
+| Geyser Subscriptions | `services/geyser-stream/src/subscriptions/pumpfunCreations.ts` | Token creation detection            |
 
-- Yellowstone gRPC subscription management
-- Token creation event extraction
-- Auto-reconnection with exponential backoff
+---
 
-## Testing Changes
+## Testing & Validation
 
-### Test Individual Package
+Break larger validation tasks into subtasks before merging:
+
+### 1. Test an Individual Package
 
 ```bash
 cd packages/config
-npx tsx src/index.ts  # Test directly
+npx tsx src/index.ts   # Run entry file or test scripts here
 ```
 
-### Test Stream Detection
+### 2. Test Stream Detection
+
+**Subtasks:**  
+- Start stream in detection mode  
+- Confirm real-time token detection without sending transactions
 
 ```bash
-pnpm dev:working  # Safe - no transactions
+pnpm dev:working
 ```
 
-### Test Full Pipeline
+### 3. Test Full Trading Pipeline
+
+**Subtasks:**  
+- Set buy amount low  
+- Validate token detection, simulated or real trade  
+- Review logs for error or unexpected behaviour
 
 ```bash
 # Use SMALL amounts!
 pnpm dev:full
 ```
 
-## Adding Features
+---
 
-### Example: Add New Metric
+## Feature Addition Guide
 
-1. Increment counter in code:
+Add new features methodically using incremental subtasks.
 
-```typescript
-metrics.incrementCounter("my_new_metric");
-```
+### A. Adding a Metric
 
-2. Observe latency:
+1. **Declare and Increment:**  
+   ```typescript
+   metrics.incrementCounter("my_new_metric");
+   ```
 
-```typescript
-const start = Date.now();
-// ... operation
-metrics.observeLatency("my_operation_ms", Date.now() - start);
-```
+2. **Add Latency Tracking:**  
+   ```typescript
+   const start = Date.now();
+   // ... op
+   metrics.observeLatency("my_operation_ms", Date.now() - start);
+   ```
 
-3. Report summary:
+3. **Summary Reporting:**  
+   ```typescript
+   metrics.reportLoopSummary({
+     loop: "my_operation",
+     success: true,
+     customField: value,
+   });
+   ```
 
-```typescript
-metrics.reportLoopSummary({
-  loop: "my_operation",
-  success: true,
-  customField: value,
-});
-```
+### B. Adding an Event
 
-### Example: Add New Event
+1. **Define Event Type:**  
+   In `packages/events/src/index.ts`  
+   ```typescript
+   export interface MyNewEvent {
+     type: "MyNew";
+     data: string;
+     timestamp: number;
+   }
+   ```
 
-1. Define event type in `packages/events/src/index.ts`:
+2. **Emitter Method:**  
+   ```typescript
+   emitMyNew(event: Omit<MyNewEvent, "type">): void {
+     this.emit("my:new", { ...event, type: "MyNew" });
+   }
+   ```
 
-```typescript
-export interface MyNewEvent {
-  type: "MyNew";
-  data: string;
-  timestamp: number;
-}
-```
+3. **Listener Method:**  
+   ```typescript
+   onMyNew(handler: (event: MyNewEvent) => void): void {
+     this.on("my:new", handler);
+   }
+   ```
 
-2. Add emitter method:
+---
 
-```typescript
-emitMyNew(event: Omit<MyNewEvent, "type">): void {
-  this.emit("my:new", { ...event, type: "MyNew" });
-}
-```
+## Build & Clean System
 
-3. Add listener method:
-
-```typescript
-onMyNew(handler: (event: MyNewEvent) => void): void {
-  this.on("my:new", handler);
-}
-```
-
-## Build System
-
+**Build all packages:**  
 ```bash
-pnpm build        # Build all packages
-pnpm clean        # Remove build artifacts
+pnpm build
+```
+**Clean build artifacts:**  
+```bash
+pnpm clean
 ```
 
-Build order (managed by TypeScript project references):
+### Build Order
 
-1. config, logging, metrics, events, store (no dependencies)
-2. solana-client (depends on config)
-3. transactions (depends on config, logging, metrics, solana-client)
-4. services and apps (depend on everything)
+| Step | Packages                       | Description/Dependencies                          |
+|------|------------------------------- |---------------------------------------------------|
+| 1    | config, logging, metrics, events, store | Foundation (no deps)                    |
+| 2    | solana-client                  | Depends on config                                 |
+| 3    | transactions                   | Depends on config, logging, metrics, solana-client |
+| 4    | services, apps                 | Top-level, depends on everything                  |
 
-## Debugging
+---
+
+## Debugging Checklist
 
 ### Enable Debug Logging
 
-Edit `config/default.toml`:
+1. **Edit configuration:**  
+   ```toml
+   [logging]
+   level = "debug"
+   ```
 
-```toml
-[logging]
-level = "debug"
-```
+2. **Validate log output:**  
+   - Use `logs/mvp-metrics.log` for metric insight
 
 ### Check Metrics
-
-Metrics are written to `logs/mvp-metrics.log`:
 
 ```bash
 tail -f logs/mvp-metrics.log | jq
 ```
 
-### Inspect Geyser Events
+### Verbose Geyser Event Inspection
 
-Add verbose logging in `examples/working-mvp.ts`:
+- In script (`examples/working-mvp.ts`):  
+   ```typescript
+   console.log(JSON.stringify(data, null, 2));
+   ```
 
-```typescript
-console.log(JSON.stringify(data, null, 2));
-```
+---
 
-## Common Patterns
+## Common Coding Patterns
 
-### Configuration Access
+### 1. Load Configuration
 
 ```typescript
 import { loadConfig } from "@fresh-sniper/config";
 const config = loadConfig();
 ```
 
-### Logging
+### 2. Logging
 
 ```typescript
 import { createRootLogger } from "@fresh-sniper/logging";
@@ -226,7 +287,7 @@ const logger = createRootLogger({ level: "info" });
 logger.info({ context: "value" }, "message");
 ```
 
-### Metrics
+### 3. Metrics
 
 ```typescript
 import { createMetrics } from "@fresh-sniper/metrics";
@@ -235,6 +296,13 @@ metrics.incrementCounter("counter_name");
 metrics.observeLatency("operation_ms", timeMs);
 ```
 
+---
+
 ## Next Steps
 
-See `docs/todo.md` for development roadmap.
+- Review and contribute to the [project roadmap](./todo.md).
+- Check remaining tasks and open issues in `docs/todo.md`.
+- Discuss questions or proposals in the team chat or by opening issues.
+
+---
+
