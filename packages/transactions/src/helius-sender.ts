@@ -37,8 +37,9 @@ export interface HeliusSenderConfig {
   apiKey: string;
   rpcEndpoint?: string; // Standard RPC for reads
   commitment?: Commitment;
-  tipLamports?: number; // Tip amount (default 0.001 SOL = 1000000 lamports)
+  tipLamports?: number; // Tip amount (default 0.001 SOL = 1000000 lamports, or 0.000005 SOL = 5000 lamports for SWQOS-only)
   region?: 'ewr' | 'slc' | 'lon' | 'fra' | 'ams' | 'sg' | 'tyo'; // Regional endpoint
+  swqosOnly?: boolean; // Use SWQOS-only mode (lower 0.000005 SOL tip, no Jito)
 }
 
 /**
@@ -62,8 +63,10 @@ export class HeliusSenderConnection extends Connection {
     // Helius Sender endpoint (HTTP for backend, requires tip + priority fee)
     // Use regional HTTP for lowest latency (not HTTPS)
     const region = config.region || 'slc'; // Default to Salt Lake City (central US)
-    this.heliusSenderUrl = `http://${region}-sender.helius-rpc.com/fast`;
-    this.tipLamports = config.tipLamports || 1000000; // 0.001 SOL default
+    const swqosParam = config.swqosOnly ? '?swqos_only=true' : '';
+    this.heliusSenderUrl = `http://${region}-sender.helius-rpc.com/fast${swqosParam}`;
+    // Default tip: 0.000005 SOL (5000 lamports) for SWQOS-only, 0.001 SOL (1000000 lamports) for full routing
+    this.tipLamports = config.tipLamports || (config.swqosOnly ? 5000 : 1000000);
   }
 
   /**
@@ -203,16 +206,18 @@ export function createHeliusSenderConnection(
   options?: {
     rpcEndpoint?: string;
     commitment?: Commitment;
-    tipLamports?: number; // Default 0.001 SOL (1000000 lamports)
+    tipLamports?: number; // Custom tip amount (overrides swqosOnly default)
     region?: 'ewr' | 'slc' | 'lon' | 'fra' | 'ams' | 'sg' | 'tyo'; // Regional endpoint
+    swqosOnly?: boolean; // Use SWQOS-only mode (0.000005 SOL tip, no Jito)
   }
 ): HeliusSenderConnection {
   return new HeliusSenderConnection({
     apiKey,
     rpcEndpoint: options?.rpcEndpoint,
     commitment: options?.commitment || "confirmed",
-    tipLamports: options?.tipLamports || 1000000,
+    tipLamports: options?.tipLamports,
     region: options?.region,
+    swqosOnly: options?.swqosOnly,
   });
 }
 

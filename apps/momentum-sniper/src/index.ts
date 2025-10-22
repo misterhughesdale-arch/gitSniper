@@ -35,9 +35,11 @@ const STRATEGY_FILE = process.env.STRATEGY_FILE || "momentum-breakeven.toml"; //
 const keypairData = JSON.parse(readFileSync(TRADER_PATH, "utf-8")); // Secret key JSON
 const trader = Keypair.fromSecretKey(Uint8Array.from(keypairData));
 // Use Helius Sender connection to route all sends through fast endpoint
+// SWQOS-only mode: 0.000005 SOL tip (vs 0.001 SOL for full Jito routing)
 const connection = createHeliusSenderConnection(HELIUS_API_KEY, {
   rpcEndpoint: RPC_URL,
-  commitment: "confirmed"
+  commitment: "confirmed",
+  swqosOnly: true, // Lower tip for cost-optimized trading
 });
 
 // ====== LOAD STRATEGY CONFIG ======
